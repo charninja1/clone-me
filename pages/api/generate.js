@@ -43,3 +43,4 @@ res.status(200).json({ result: mockEmail });
     res.status(500).json({ error: "Something went wrong" });
   }
 }
+
