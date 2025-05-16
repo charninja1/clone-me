@@ -1,10 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button, Card } from '../components';
 import { useRouter } from 'next/router';
+import { auth } from '../lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 export default function LandingPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
+  
+  // Check authentication and redirect to dashboard if logged in
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.push('/dashboard');
+      }
+    });
+    
+    return () => unsubscribe();
+  }, [router]);
 
   const features = [
     {
