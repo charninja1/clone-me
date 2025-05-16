@@ -25,7 +25,7 @@ export default function MainLayout({ children }) {
                 <Link href="/" className="text-xl font-bold text-primary-600 dark:text-primary-400">CloneMe</Link>
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                <Link href="/"
+                <Link href="/dashboard"
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-surface-600 hover:text-surface-800 dark:text-surface-400 dark:hover:text-surface-300 hover:border-surface-300 dark:hover:border-surface-600">
                   🏠 Generator
                 </Link>

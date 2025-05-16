@@ -40,7 +40,7 @@ export default function LoginPage() {
     
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push("/");
+      router.push("/dashboard");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -108,7 +108,7 @@ export default function LoginPage() {
         defaultVoiceId: null
       });
 
-      router.push("/");
+      router.push("/dashboard");
     } catch (err) {
       setError(err.message);
     } finally {

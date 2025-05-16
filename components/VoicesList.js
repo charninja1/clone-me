@@ -49,12 +49,13 @@ export default function VoicesList({
       {voices.map((voice) => (
         <Card
           key={voice.id}
-          className={`p-6 hover:shadow-lg transition-all duration-500 overflow-visible ${
+          className={`transition-all duration-500 ${
             animatedItems[voice.id] ? 'animate-slideIn' : 'opacity-0 translate-y-4'
           }`}
+          hover={true}
         >
-          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
-            <div className="flex-1">
+          <div className="flex flex-col lg:flex-row gap-6">
+            <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-3 mb-4">
                 <h3 className="text-xl font-semibold text-surface-900 dark:text-surface-100">
                   {voice.name}
@@ -104,7 +105,7 @@ export default function VoicesList({
                 variant="primary"
                 size="sm"
                 onClick={() => onTrain(voice.id)}
-                className="hover:scale-105 transition-transform flex-1 lg:flex-none lg:w-32"
+                className="hover:scale-105 transition-transform flex-1 lg:flex-none"
               >
                 Train Voice
               </Button>
@@ -112,7 +113,7 @@ export default function VoicesList({
                 variant="outline"
                 size="sm"
                 onClick={() => onEdit(voice)}
-                className="hover:scale-105 transition-transform flex-1 lg:flex-none lg:w-32"
+                className="hover:scale-105 transition-transform flex-1 lg:flex-none"
               >
                 Edit Details
               </Button>
@@ -120,7 +121,7 @@ export default function VoicesList({
                 variant="ghost"
                 size="sm"
                 onClick={() => onDelete(voice.id)}
-                className="hover:scale-105 transition-transform text-red-600 hover:text-red-700 dark:text-red-500 dark:hover:text-red-400 flex-1 lg:flex-none lg:w-32"
+                className="hover:scale-105 transition-transform text-red-600 hover:text-red-700 dark:text-red-500 dark:hover:text-red-400 flex-1 lg:flex-none"
               >
                 Delete
               </Button>

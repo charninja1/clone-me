@@ -377,7 +377,7 @@ export default function VoicesPage() {
                   className="overflow-hidden p-0"
                 >
                   {editingVoiceId === voice.id ? (
-                    <div className="p-5">
+                    <div className="p-6">
                       <h3 className="text-lg font-medium text-surface-900 mb-3">Edit Voice</h3>
                       <div className="space-y-4">
                         <Input
@@ -431,7 +431,7 @@ export default function VoicesPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="p-5">
+                    <div className="p-6">
                       <h3 className="text-lg font-medium text-surface-900 mb-1">{voice.name}</h3>
                       
                       {voice.description && (
@@ -464,7 +464,7 @@ export default function VoicesPage() {
                         </div>
                       )}
                       
-                      <div className="flex space-x-2 mt-4">
+                      <div className="flex flex-wrap gap-3 mt-4">
                         <Button
                           onClick={() => startEdit(voice)}
                           variant="outline"
