@@ -1,22 +1,39 @@
-# Clone Me - AI-Powered Email Generator
+# CloneMe - AI-Powered Personal Email Assistant
 
-A Next.js application that helps users generate professional emails with personalized tones using AI. This tool allows you to create, save, and refine emails using OpenAI's GPT models.
+CloneMe is an advanced AI email generation tool that learns your unique writing style and creates emails that are indistinguishable from your own writing. Using personality-based voice profiles, pattern analysis, and continuous learning, CloneMe ensures every email sounds authentically you.
 
-## Features
+## ✨ Key Features
 
-- **AI Email Generation**: Generate professional emails based on your input and selected tone
-- **Customizable Tones**: Create and manage different writing styles/tones
-- **Revision System**: Get AI-powered revisions based on your feedback
-- **Firebase Integration**: User authentication and data storage with Firestore
-- **Semantic Search**: Find similar past emails using embeddings
+### 🎭 Advanced Voice Profiles
+- **Personality-Based Voices**: Create multiple voice profiles with different personality traits (formality, warmth, emotion, detail)
+- **Voice Onboarding Wizard**: Step-by-step voice creation with sample email uploads and personality quiz
+- **Interactive Training**: Calibration mode with quick feedback buttons for continuous improvement
+- **Training Analytics**: Visualize your voice training progress with detailed analytics
 
-## Getting Started
+### 🤖 Human-Like Email Generation
+- **Undetectable AI Output**: Emails that are indistinguishable from human writing
+- **Pattern Analysis**: Learns from your sample emails to match your unique style
+- **Dynamic Variations**: Personality-driven language variations for natural-sounding emails
+- **Continuous Learning**: Feedback memory system that improves with every revision
+
+### 🎨 Modern UI/UX
+- **Beautiful Interface**: Gradient-rich design with smooth animations
+- **Dark Mode**: Full dark mode support with seamless transitions
+- **Component Library**: Comprehensive UI components (Button, Card, Input, etc.)
+- **Training Indicators**: Visual feedback on voice training progress throughout the app
+
+### 🛠️ User Features
+- **User Profiles**: Personalized with first/last name integration
+- **Auto-Save**: Automatic email saving with toggle control
+- **Revision System**: AI-powered revisions based on your feedback
+- **Settings Panel**: Customizable preferences and controls
+
+## 🚀 Getting Started
 
 ### Prerequisites
-
 - Node.js 16+ and npm
 - Firebase account
-- OpenAI API key
+- OpenAI API key (optional - app works with mock data for development)
 
 ### Installation
 
@@ -32,7 +49,7 @@ A Next.js application that helps users generate professional emails with persona
    ```
 
 3. Set up environment variables
-   Create a `.env.local` file in the project root with the following:
+   Create a `.env.local` file with:
    ```
    OPENAI_API_KEY=your_openai_api_key
    NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
@@ -49,36 +66,89 @@ A Next.js application that helps users generate professional emails with persona
    npm run dev
    ```
 
-5. Visit [http://localhost:3000](http://localhost:3000) in your browser
+5. Visit [http://localhost:3000](http://localhost:3000)
 
-## Development
+## 🔧 Development Commands
 
-- `npm run dev` - Start development server
+- `npm run dev` - Start development server with Turbopack
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
 
-## Technology Stack
+## 🏗️ Technology Stack
 
-- **Frontend**: Next.js, React
-- **Backend**: Next.js API routes
+- **Frontend**: Next.js 13+, React 18
+- **Backend**: Next.js API Routes
 - **Database**: Firebase Firestore
 - **Authentication**: Firebase Auth
-- **AI**: OpenAI API (GPT-3.5 Turbo, Embeddings)
-- **Styling**: TailwindCSS (planned)
+- **AI**: OpenAI API (GPT-3.5/4, Ada Embeddings)
+- **Styling**: Tailwind CSS, Custom CSS with CSS Variables
+- **State Management**: React Context API
 
-## Current Status and Roadmap
+## 📁 Project Structure
 
-### Current Features
-- AI-powered email generation
-- Customizable tones/writing styles
-- User authentication system
-- Modern, responsive UI with dark mode support
-- Basic settings and preferences
+```
+clone-me/
+├── components/
+│   ├── ui/                    # UI component library
+│   ├── layout/               # Layout components
+│   ├── VoiceOnboardingWizard.js
+│   ├── VoiceCalibration.js
+│   └── FeedbackMemoryVisualization.js
+├── contexts/
+│   └── ThemeContext.js       # Theme management
+├── lib/
+│   ├── firebase.js          # Firebase configuration
+│   ├── emailPatterns.js     # Email pattern analysis
+│   └── personalityVarieties.js # Personality variations
+├── pages/
+│   ├── api/                 # API endpoints
+│   ├── index.js            # Main email generation
+│   ├── voices.js           # Voice management
+│   ├── settings.js         # User settings
+│   └── login.js            # Authentication
+└── styles/
+    └── globals.css         # Global styles with gradients
+```
 
-### Upcoming Features
-- Personalized prompts based on user's name (first/last name)
-- Better tone differentiation with tone-specific saved emails
-- Extended auto-save for all modifications including revisions
-- Improved system theme detection
-- Enhanced component library and UI refinements
+## 🎯 Current Status
+
+### ✅ Implemented Features
+- Advanced voice system with personality profiles
+- Voice onboarding wizard and training tools
+- Human-like email generation with pattern analysis
+- Feedback memory system
+- Modern UI with dark mode
+- User authentication and profiles
+- Auto-save functionality
+
+### 🚧 In Progress
+- Inline revision UI
+- Email versioning system
+- Additional user settings (auto-copy, Gmail integration)
+
+### 📋 Planned Features
+- Voice export/import functionality
+- Email type templates (Thank You, Request, Follow-Up)
+- Voice marketplace for sharing templates
+- Advanced analytics dashboard
+- Team collaboration features
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- Built with Next.js and React
+- Powered by OpenAI's GPT models
+- UI components inspired by modern design systems
+- Special thanks to all contributors
+
+---
+
+**Note**: This project requires API keys for full functionality. The app includes mock data for development without API keys.
