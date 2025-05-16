@@ -12,7 +12,7 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import Layout from "../components/Layout";
+import { Layout, Card, Button, Select, TextArea, AlertBanner, Badge, EmailDisplay } from "../components";
 
 export default function Home() {
   const [topic, setTopic] = useState("");
@@ -20,9 +20,11 @@ export default function Home() {
   const [savedEmails, setSavedEmails] = useState([]);
   const [feedbacks, setFeedbacks] = useState({});
   const [loadingId, setLoadingId] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState(null);
   const [userId, setUserId] = useState(null);
+  const [error, setError] = useState("");
 
   const [autoSave, setAutoSave] = useState(false);
   const [autoCopy, setAutoCopy] = useState(false);
@@ -115,13 +117,16 @@ export default function Home() {
 
   async function handleGenerate() {
     if (!topic || !selectedVoice) {
-      alert("Enter a topic and select a tone first.");
+      setError("Please enter a topic and select a tone first.");
       return;
     }
 
-    const topExamples = await getTop3RelevantExamples(topic);
+    setError("");
+    setIsGenerating(true);
+    try {
+      const topExamples = await getTop3RelevantExamples(topic);
 
-    const prompt = `
+      const prompt = `
 You are writing an email for a college student named Charlie.
 Use this instruction: "${selectedVoice.instructions}"
 
@@ -133,108 +138,143 @@ ${topExamples || "[None yet]"}
 Now generate a new email in the same style.
 `;
 
-    const res = await fetch("/api/revise", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
-    });
+      const res = await fetch("/api/revise", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
 
-    const data = await res.json();
-    setResponse(data.result);
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to generate email");
+      }
+      
+      setResponse(data.result);
 
-    if (autoSave && data.result.trim()) {
+      if (autoSave && data.result.trim()) {
+        await addDoc(collection(db, "emails"), {
+          userId,
+          voiceId: selectedVoice.id,
+          originalTopic: topic,
+          generatedEmail: data.result,
+          feedbackText: "",
+          revision: "",
+          approved: false,
+          editedAt: new Date().toISOString(),
+        });
+        fetchEmails();
+      }
+
+      if (autoCopy) copyToClipboard(data.result);
+      if (autoGmail) openInGmail(data.result);
+    } catch (err) {
+      setError("Error generating email: " + err.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
+  async function handleSave() {
+    if (!response.trim()) return;
+    
+    try {
       await addDoc(collection(db, "emails"), {
         userId,
         voiceId: selectedVoice.id,
         originalTopic: topic,
-        generatedEmail: data.result,
+        generatedEmail: response,
         feedbackText: "",
         revision: "",
         approved: false,
         editedAt: new Date().toISOString(),
       });
+
+      setTopic("");
+      setResponse("");
       fetchEmails();
+    } catch (err) {
+      setError("Error saving email: " + err.message);
     }
-
-    if (autoCopy) copyToClipboard(data.result);
-    if (autoGmail) openInGmail(data.result);
-  }
-
-  async function handleSave() {
-    if (!response.trim()) return;
-
-    await addDoc(collection(db, "emails"), {
-      userId,
-      voiceId: selectedVoice.id,
-      originalTopic: topic,
-      generatedEmail: response,
-      feedbackText: "",
-      revision: "",
-      approved: false,
-      editedAt: new Date().toISOString(),
-    });
-
-    setTopic("");
-    setResponse("");
-    fetchEmails();
   }
 
   async function handleRevise(email) {
     const feedback = feedbacks[email.id] || "";
-    if (!feedback.trim()) return;
+    if (!feedback.trim()) {
+      setError("Please provide feedback for revision.");
+      return;
+    }
 
+    setError("");
     setLoadingId(email.id);
 
-    const prompt = `
+    try {
+      const prompt = `
 Revise the following email from Charlie:
 "${email.generatedEmail}"
 
 Charlie's feedback is: "${feedback}"
 `;
 
-    const res = await fetch("/api/revise", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
-    });
-
-    const data = await res.json();
-
-    await updateDoc(doc(db, "emails", email.id), {
-      feedbackText: feedback,
-      revision: data.result,
-    });
-
-    // ✅ Auto-save revision to Firestore if enabled
-    if (autoSave && data.result.trim()) {
-      await updateDoc(doc(db, "emails", email.id), {
-        revision: data.result,
-        revisionSavedAt: new Date().toISOString(),
+      const res = await fetch("/api/revise", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
       });
-    }
 
-    setLoadingId(null);
-    fetchEmails();
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to revise email");
+      }
+
+      await updateDoc(doc(db, "emails", email.id), {
+        feedbackText: feedback,
+        revision: data.result,
+      });
+
+      // Auto-save revision to Firestore if enabled
+      if (autoSave && data.result.trim()) {
+        await updateDoc(doc(db, "emails", email.id), {
+          revision: data.result,
+          revisionSavedAt: new Date().toISOString(),
+        });
+      }
+
+      fetchEmails();
+    } catch (err) {
+      setError("Error revising email: " + err.message);
+    } finally {
+      setLoadingId(null);
+    }
   }
 
   async function handleApprove(id) {
     const emailDoc = savedEmails.find((e) => e.id === id);
     if (!emailDoc || !emailDoc.generatedEmail) return;
 
-    const res = await fetch("/api/embed", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: emailDoc.generatedEmail }),
-    });
+    try {
+      const res = await fetch("/api/embed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: emailDoc.generatedEmail }),
+      });
 
-    const data = await res.json();
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to generate embedding");
+      }
 
-    await updateDoc(doc(db, "emails", id), {
-      approved: true,
-      embedding: data.embedding,
-    });
+      await updateDoc(doc(db, "emails", id), {
+        approved: true,
+        embedding: data.embedding,
+      });
 
-    fetchEmails();
+      fetchEmails();
+    } catch (err) {
+      setError("Error approving email: " + err.message);
+    }
   }
 
   function copyToClipboard(text) {
@@ -261,91 +301,180 @@ Charlie's feedback is: "${feedback}"
 
   return (
     <Layout>
-      <h1>Generate an Email</h1>
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-2xl font-bold text-primary-700 mb-8">Generate an Email</h1>
 
-      <label>Choose a tone:</label>
-      <select
-        onChange={(e) =>
-          setSelectedVoice(voices.find((v) => v.id === e.target.value))
-        }
-        value={selectedVoice?.id || ""}
-      >
-        <option value="">-- Select --</option>
-        {voices.map((v) => (
-          <option key={v.id} value={v.id}>
-            {v.name}
-          </option>
-        ))}
-      </select>
+        {/* Generation form */}
+        <Card className="mb-10">
+          {error && (
+            <AlertBanner
+              type="error"
+              message={error}
+              className="mb-6"
+              onClose={() => setError("")}
+            />
+          )}
 
-      <textarea
-        placeholder="What do you want to say?"
-        rows={3}
-        value={topic}
-        onChange={(e) => setTopic(e.target.value)}
-        style={{ width: "100%", marginTop: "1rem" }}
-      />
+          <div className="space-y-6">
+            <Select
+              id="tone-select"
+              label="Choose a tone:"
+              className="max-w-md"
+              value={selectedVoice?.id || ""}
+              onChange={(e) => setSelectedVoice(voices.find((v) => v.id === e.target.value))}
+              options={voices.map(voice => ({ value: voice.id, label: voice.name }))}
+              required
+            />
 
-      <button onClick={handleGenerate}>Generate Email</button>
+            <TextArea
+              id="topic"
+              label="What do you want to say?"
+              placeholder="e.g. I need to ask for an extension on my paper due Friday..."
+              rows={4}
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              required
+            />
 
-      {response && !autoSave && (
-        <>
-          <h3>Generated Email</h3>
-          <textarea
-            rows={6}
-            value={response}
-            onChange={(e) => setResponse(e.target.value)}
-            style={{ width: "100%" }}
-          />
-          <button onClick={handleSave}>Save Email</button>
-        </>
-      )}
-
-      <h2 style={{ marginTop: "3rem" }}>Your Saved Emails</h2>
-      {savedEmails.map((email) => (
-        <div key={email.id} style={{ marginBottom: "2rem" }}>
-          <strong>Prompt:</strong> {email.originalTopic}
-          <br />
-          <strong>Email:</strong>
-          <pre>{email.generatedEmail}</pre>
-
-          <div style={{ marginTop: "0.5rem", marginBottom: "1rem" }}>
-            <button onClick={() => copyToClipboard(email.generatedEmail)}>📋 Copy</button>
-            <button onClick={() => openInGmail(email.generatedEmail)}>📧 Gmail</button>
-            <button onClick={() => downloadTextFile(`email-${email.id}.txt`, email.generatedEmail)}>💾 Download</button>
+            <div>
+              <Button
+                onClick={handleGenerate}
+                disabled={isGenerating}
+                isLoading={isGenerating}
+              >
+                Generate Email
+              </Button>
+            </div>
           </div>
 
-          <textarea
-            placeholder="Feedback for revision"
-            value={feedbacks[email.id] || ""}
-            onChange={(e) =>
-              setFeedbacks({ ...feedbacks, [email.id]: e.target.value })
-            }
-          />
-          <button onClick={() => handleRevise(email)}>
-            {loadingId === email.id ? "Revising..." : "Revise with AI"}
-          </button>
-
-          {email.revision && (
-            <>
-              <p><strong>AI Revision:</strong></p>
-              <pre>{email.revision}</pre>
-              <div style={{ marginTop: "0.5rem", marginBottom: "1rem" }}>
-                <button onClick={() => copyToClipboard(email.revision)}>📋 Copy</button>
-                <button onClick={() => openInGmail(email.revision)}>📧 Gmail</button>
-                <button onClick={() => downloadTextFile(`revision-${email.id}.txt`, email.revision)}>💾 Download</button>
+          {response && !autoSave && (
+            <div className="mt-8 border-t border-surface-200 pt-6">
+              <h3 className="text-lg font-medium text-surface-900 mb-3">Generated Email</h3>
+              <TextArea
+                rows={8}
+                value={response}
+                onChange={(e) => setResponse(e.target.value)}
+              />
+              <div className="mt-4 flex space-x-3">
+                <Button 
+                  onClick={handleSave}
+                  variant="primary"
+                >
+                  Save Email
+                </Button>
+                <Button
+                  onClick={() => copyToClipboard(response)}
+                  variant="outline"
+                  icon={<span>📋</span>}
+                >
+                  Copy
+                </Button>
+                <Button
+                  onClick={() => openInGmail(response)}
+                  variant="outline"
+                  icon={<span>📧</span>}
+                >
+                  Open in Gmail
+                </Button>
               </div>
-              {!email.approved ? (
-                <button onClick={() => handleApprove(email.id)}>
-                  ✅ Approve for Training
-                </button>
-              ) : (
-                <p style={{ color: "green" }}>✅ Approved</p>
-              )}
-            </>
+            </div>
+          )}
+        </Card>
+
+        {/* Saved emails */}
+        <div>
+          <h2 className="text-xl font-semibold text-surface-800 mb-6">Your Saved Emails</h2>
+          
+          {savedEmails.length === 0 ? (
+            <Card className="text-center p-8 bg-surface-50">
+              <p className="text-surface-600">No saved emails yet. Generate your first one above.</p>
+            </Card>
+          ) : (
+            <div className="space-y-8">
+              {savedEmails.map((email) => (
+                <Card key={email.id} className="overflow-hidden p-0">
+                  <div className="p-6">
+                    {/* Email header */}
+                    <div className="flex flex-wrap justify-between items-start mb-4">
+                      <div className="mb-2 mr-4">
+                        <span className="block text-xs font-medium text-surface-500 mb-1">
+                          Topic:
+                        </span>
+                        <h3 className="text-lg font-medium text-surface-900">
+                          {email.originalTopic}
+                        </h3>
+                      </div>
+                      {email.approved && (
+                        <Badge variant="success">
+                          ✅ Approved
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    {/* Original email */}
+                    <div className="mb-6">
+                      <h4 className="text-sm font-medium text-surface-700 mb-2">Email:</h4>
+                      <EmailDisplay 
+                        email={email.generatedEmail}
+                        onCopy={() => copyToClipboard(email.generatedEmail)}
+                        onOpenInGmail={() => openInGmail(email.generatedEmail)}
+                        onDownload={() => downloadTextFile(`email-${email.id}.txt`, email.generatedEmail)}
+                        showHeader={false}
+                      />
+                    </div>
+                    
+                    {/* Feedback and revision section */}
+                    <div className="border-t border-surface-200 pt-4">
+                      <TextArea
+                        id={`feedback-${email.id}`}
+                        label="Feedback for revision:"
+                        placeholder="What would you like to change in this email?"
+                        rows={3}
+                        value={feedbacks[email.id] || ""}
+                        onChange={(e) => setFeedbacks({ ...feedbacks, [email.id]: e.target.value })}
+                        className="mb-3"
+                      />
+                      <Button
+                        onClick={() => handleRevise(email)}
+                        disabled={loadingId === email.id}
+                        isLoading={loadingId === email.id}
+                      >
+                        Revise with AI
+                      </Button>
+                    </div>
+
+                    {/* Revision display (if exists) */}
+                    {email.revision && (
+                      <div className="mt-6 border-t border-surface-200 pt-4">
+                        <h4 className="text-sm font-medium text-surface-700 mb-2">AI Revision:</h4>
+                        <EmailDisplay 
+                          email={email.revision}
+                          onCopy={() => copyToClipboard(email.revision)}
+                          onOpenInGmail={() => openInGmail(email.revision)}
+                          onDownload={() => downloadTextFile(`revision-${email.id}.txt`, email.revision)}
+                          showHeader={false}
+                        />
+                        
+                        {!email.approved && (
+                          <div className="mt-4">
+                            <Button
+                              onClick={() => handleApprove(email.id)}
+                              variant="success"
+                              icon={<span>✅</span>}
+                            >
+                              Approve for Training
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
           )}
         </div>
-      ))}
+      </div>
     </Layout>
   );
 }

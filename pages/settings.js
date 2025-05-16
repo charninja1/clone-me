@@ -10,7 +10,9 @@ import {
   where,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import Layout from "../components/Layout";
+import { Layout, Card, Button, Select, Checkbox, AlertBanner } from "../components";
+import ThemeSelector from "../components/ui/ThemeSelector";
+import { useTheme, THEMES } from "../contexts/ThemeContext";
 
 export default function SettingsPage() {
   const [userId, setUserId] = useState(null);
@@ -19,7 +21,10 @@ export default function SettingsPage() {
   const [defaultVoiceId, setDefaultVoiceId] = useState("");
   const [darkMode, setDarkMode] = useState(false);
   const [autoSave, setAutoSave] = useState(false);
+  const [autoCopy, setAutoCopy] = useState(false);
+  const [autoGmail, setAutoGmail] = useState(false);
   const [status, setStatus] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -41,6 +46,8 @@ export default function SettingsPage() {
       setDefaultVoiceId(data.defaultVoiceId || "");
       setDarkMode(data.settings?.darkMode || false);
       setAutoSave(data.settings?.autoSave || false);
+      setAutoCopy(data.settings?.autoCopy || false);
+      setAutoGmail(data.settings?.autoGmail || false);
     }
   }
 
@@ -53,64 +60,121 @@ export default function SettingsPage() {
 
   async function handleSave() {
     if (!userId) return;
+    
+    setIsLoading(true);
+    try {
+      const userRef = doc(db, "users", userId);
+      await updateDoc(userRef, {
+        defaultVoiceId,
+        settings: {
+          darkMode,
+          autoSave,
+          autoCopy,
+          autoGmail
+        },
+      });
 
-    const userRef = doc(db, "users", userId);
-    await updateDoc(userRef, {
-      defaultVoiceId,
-      settings: {
-        darkMode,
-        autoSave,
-      },
-    });
-
-    setStatus("✅ Settings saved!");
-    setTimeout(() => setStatus(""), 2000);
+      setStatus("✅ Settings saved!");
+      setTimeout(() => setStatus(""), 3000);
+    } catch (error) {
+      setStatus(`❌ Error: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
     <Layout>
-      <h1>Account Settings</h1>
+      <div className="max-w-3xl mx-auto">
+        <Card className="mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-primary-700 mb-0">Account Settings</h1>
+            <div className="text-sm bg-surface-100 px-3 py-1 rounded-md">
+              <span className="font-medium">Email:</span> {userEmail}
+            </div>
+          </div>
 
-      <p><strong>Email:</strong> {userEmail}</p>
+          <div className="space-y-8">
+            {/* Default Tone */}
+            <Card className="mb-8">
+              <h3 className="text-lg font-medium text-surface-900 mb-4">Default Tone</h3>
+              <p className="text-surface-600 mb-4">
+                Select a default tone that will be automatically selected when generating new emails.
+              </p>
+              <div className="max-w-xs">
+                <Select
+                  id="default-tone"
+                  value={defaultVoiceId}
+                  onChange={(e) => setDefaultVoiceId(e.target.value)}
+                  aria-label="Choose default tone"
+                  options={voices.map(v => ({ value: v.id, label: v.name }))}
+                  placeholder="-- None Selected --"
+                />
+              </div>
+            </Card>
 
-      <div style={{ marginTop: "2rem" }}>
-        <h3>Default Tone</h3>
-        <select
-          value={defaultVoiceId}
-          onChange={(e) => setDefaultVoiceId(e.target.value)}
-        >
-          <option value="">-- None Selected --</option>
-          {voices.map((v) => (
-            <option key={v.id} value={v.id}>{v.name}</option>
-          ))}
-        </select>
+            {/* Preferences */}
+            <Card>
+              <h3 className="text-lg font-medium text-surface-900 mb-4">Preferences</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-medium mb-2">Theme</h4>
+                  <div className="mb-2">
+                    <ThemeSelector />
+                  </div>
+                  <p className="text-sm text-surface-500 dark:text-surface-400 mb-4">
+                    Choose between light mode, dark mode, or your system preference.  
+                  </p>
+                </div>
+
+                <Checkbox
+                  id="auto-save"
+                  checked={autoSave}
+                  onChange={(e) => setAutoSave(e.target.checked)}
+                  label="Auto-save after generation"
+                  description="Automatically save emails after they're generated."
+                />
+
+                <Checkbox
+                  id="auto-copy"
+                  checked={autoCopy}
+                  onChange={(e) => setAutoCopy(e.target.checked)}
+                  label="Auto-copy to clipboard"
+                  description="Automatically copy generated emails to your clipboard."
+                />
+
+                <Checkbox
+                  id="auto-gmail"
+                  checked={autoGmail}
+                  onChange={(e) => setAutoGmail(e.target.checked)}
+                  label="Open in Gmail automatically"
+                  description="Automatically open generated emails in Gmail."
+                />
+              </div>
+            </Card>
+          </div>
+
+          <div className="mt-8 flex items-center justify-between">
+            <Button 
+              onClick={handleSave} 
+              disabled={isLoading}
+              isLoading={isLoading}
+            >
+              Save Settings
+            </Button>
+            
+            {status && (
+              <AlertBanner
+                type={status.includes('❌') ? 'error' : 'success'}
+                message={status}
+                className="ml-4 flex-1"
+                onClose={() => setStatus("")}
+              />
+            )}
+          </div>
+        </Card>
       </div>
-
-      <div style={{ marginTop: "2rem" }}>
-        <h3>Preferences</h3>
-        <label style={{ display: "block", marginBottom: "0.5rem" }}>
-          <input
-            type="checkbox"
-            checked={darkMode}
-            onChange={(e) => setDarkMode(e.target.checked)}
-          />
-          Enable dark mode (coming soon)
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={autoSave}
-            onChange={(e) => setAutoSave(e.target.checked)}
-          />
-          Auto-save after generation (coming soon)
-        </label>
-      </div>
-
-      <button onClick={handleSave} style={{ marginTop: "2rem" }}>
-        Save Settings
-      </button>
-
-      {status && <p style={{ color: "green", marginTop: "1rem" }}>{status}</p>}
     </Layout>
   );
 }

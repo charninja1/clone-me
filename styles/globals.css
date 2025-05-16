@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply text-surface-800 transition-colors duration-200;
+  }
+  
+  body {
+    @apply bg-surface-50 min-h-screen transition-colors duration-200;
+  }
+
+  h1 {
+    @apply text-3xl font-bold mb-6 text-primary-700 dark:text-primary-300;
+  }
+
+  h2 {
+    @apply text-2xl font-semibold mb-4 text-primary-600 dark:text-primary-400;
+  }
+
+  h3 {
+    @apply text-xl font-semibold mb-3 text-primary-600 dark:text-primary-400;
+  }
+
+  a {
+    @apply text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors duration-200;
+  }
+
+  /* Apply dark mode styles with class selector */
+  .dark {
+    @apply text-surface-100 bg-surface-900;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-lg bg-white dark:bg-surface-800 p-6 shadow-sm border border-surface-200 dark:border-surface-700 transition-colors duration-200;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-200;
+  }
+
+  .badge-warning {
+    @apply bg-warning-100 text-warning-800 dark:bg-warning-900 dark:text-warning-200;
+  }
+
+  .badge-error {
+    @apply bg-error-100 text-error-800 dark:bg-error-900 dark:text-error-200;
+  }
+}
+
+/* WCAG Accessibility improvements */
+@layer utilities {
+  .sr-only {
+    @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
+  }
+
+  /* High contrast mode improvements */
+  @media (forced-colors: active) {
+    button, a {
+      @apply border border-current;
+    }
+  }
+}
