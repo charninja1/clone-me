@@ -201,18 +201,18 @@ export default function SettingsPage() {
               </div>
             </Card>
 
-            {/* Default Tone */}
+            {/* Default Voice */}
             <Card className="mb-8">
-              <h3 className="text-lg font-medium text-surface-900 dark:text-surface-100 mb-4">Default Tone</h3>
+              <h3 className="text-lg font-medium text-surface-900 dark:text-surface-100 mb-4">Default Voice</h3>
               <p className="text-surface-600 dark:text-surface-400 mb-4">
-                Select a default tone that will be automatically selected when generating new emails.
+                Select a default voice that will be automatically selected when generating new emails.
               </p>
               <div className="max-w-xs">
                 <Select
-                  id="default-tone"
+                  id="default-voice"
                   value={defaultVoiceId}
                   onChange={(e) => setDefaultVoiceId(e.target.value)}
-                  aria-label="Choose default tone"
+                  aria-label="Choose default voice"
                   options={voices.map(v => ({ value: v.id, label: v.name }))}
                   placeholder="-- None Selected --"
                 />

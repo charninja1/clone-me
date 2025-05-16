@@ -29,9 +29,9 @@ export default function MainLayout({ children }) {
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-surface-600 hover:text-surface-800 dark:text-surface-400 dark:hover:text-surface-300 hover:border-surface-300 dark:hover:border-surface-600">
                   🏠 Generator
                 </Link>
-                <Link href="/tones"
+                <Link href="/voices"
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-surface-600 hover:text-surface-800 dark:text-surface-400 dark:hover:text-surface-300 hover:border-surface-300 dark:hover:border-surface-600">
-                  🎨 Tones
+                  🎨 Voices
                 </Link>
                 <Link href="/settings"
                   className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-surface-600 hover:text-surface-800 dark:text-surface-400 dark:hover:text-surface-300 hover:border-surface-300 dark:hover:border-surface-600">
@@ -91,9 +91,9 @@ export default function MainLayout({ children }) {
               className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-surface-600 hover:bg-surface-50 hover:border-surface-300 hover:text-surface-800 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:border-surface-600 dark:hover:text-surface-300">
               🏠 Generator
             </Link>
-            <Link href="/tones"
+            <Link href="/voices"
               className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-surface-600 hover:bg-surface-50 hover:border-surface-300 hover:text-surface-800 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:border-surface-600 dark:hover:text-surface-300">
-              🎨 Tones
+              🎨 Voices
             </Link>
             <Link href="/settings"
               className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-surface-600 hover:bg-surface-50 hover:border-surface-300 hover:text-surface-800 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:border-surface-600 dark:hover:text-surface-300">

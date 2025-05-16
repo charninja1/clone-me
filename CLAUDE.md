@@ -86,24 +86,94 @@ Note: Some API calls are currently mocked in development.
 
 ## Requirements and TODOs
 
-### Current Status
-- Dark mode has been implemented with three options: light, dark, and system preference. However, system preference detection has some issues that need to be fixed.
-- Auto-save currently works after initial email generation but needs to be extended to work for revisions and other changes.
+### Core Mission
+CloneMe AI for Emails enables users to generate emails in their own voice, across multiple personalized tones such as formal, academic, professional, and casual. The AI must sound indistinguishable from human-written content and should be able to evolve through direct feedback from the user to ensure it truly mirrors how they write.
 
-### Future Requirements
-1. **Personalized Prompts**: Update OpenAI prompts to generate emails for the specific user rather than a generic "Charlie". This requires:
-   - Adding first name and last name fields to user registration/profile
-   - Modifying prompts to include user's name instead of hardcoded "Charlie"
+### Tier 1: Core Email Voice Engine (Primary Requirements)
 
-2. **Improved Tone System**:
-   - Each tone should represent a clearly different writing style
-   - When a specific tone is selected, only display saved emails created with that tone
+1. **Individualized Email Tones (FOUNDATIONAL REQUIREMENT)**
+   - Each user can create and manage multiple tones—e.g., "Professor Tone," "Internship Applications," "Casual Check-ins."
+   - Each tone functions as a separate voice profile, with its own personalized training data.
+   - Users must be able to provide written samples and conversational feedback to refine each tone.
 
-3. **Extended Auto-Save**:
-   - Make auto-save work for revisions and other changes, not just first generation
+2. **Real-Time Conversational Tuning**
+   - Users can talk to the AI and say things like:
+     - "I don't talk like that."
+     - "Don't use that word, I'd say ___ instead."
+     - "This is too formal/casual/wordy/etc."
+   - The AI must remember this feedback per tone, per user.
+   - All updates must persist across sessions.
 
-4. **Fix System Theme Preference**:
-   - Address issues with system/browser theme preference detection
+3. **Human-Sounding, Undetectable Output**
+   - Emails must be indistinguishable from human-written text.
+   - By definition of being trained on the user's real voice and adjusted through dialogue, output should:
+     - Be undetectable by AI detectors.
+     - Avoid generic or templated phrasing.
+     - Reflect the user's personal phrasing, rhythm, and style.
 
-5. **Component Library**:
-   - Continue to refine the UI component system for consistency across the application
+### Tier 2: Email Generation Experience
+
+4. **Seamless Generation UI**
+   - Users choose:
+     - The tone (e.g., "Professor Tone").
+     - The email type (e.g., "Thank You," "Request," "Follow-Up").
+     - Input prompt or key message to send.
+   - AI returns a draft in the selected voice.
+
+5. **Inline Revisions and Feedback**
+   - User can revise or edit any sentence inline.
+   - Feedback options include:
+     - "Too formal"
+     - "Not how I'd phrase this"
+     - "Use this word instead: ___"
+   - Option to instantly retrain the voice profile from feedback.
+
+### Tier 3: Data and Memory Management
+
+6. **Tone Memory System**
+   - All conversational edits and feedback are saved per tone.
+   - A tone can be exported, duplicated, or version-controlled.
+   - System stores examples, corrections, and vocabulary preferences.
+
+7. **Auto-Save and Versioning**
+   - Emails are auto-saved after generation and after revisions (if user enables).
+   - Option to delete last auto-save.
+   - Logs store training interactions for transparency and retraining.
+
+### Tier 4: User Settings & Controls
+
+8. **Personal Settings Panel**
+   - Toggles for:
+     - Auto-copy to clipboard
+     - Auto-save on generate/revise
+     - Auto-open Gmail with email body
+   - Live updates without page reload.
+
+9. **Privacy and Data Protection**
+   - All personal voice data stays user-owned and secure.
+   - Option to delete data and voice memory fully at any time.
+
+### Current Implementation Status
+- Basic voice system implemented with Firebase integration
+- Email generation and revision endpoints created (using mock data)
+- UI components and dark mode implemented
+- Auto-save works for initial generation only
+
+### High Priority TODOs
+1. **Implement Real Voice Training**:
+   - Replace mock email generation with actual OpenAI integration
+   - Add user name personalization (first name/last name fields)
+   - Implement feedback memory per voice
+
+2. **Enhanced Voice Management**:
+   - Add ability to train voices with sample emails
+   - Implement inline feedback system
+   - Store conversational corrections and preferences
+
+3. **Complete Auto-Save System**:
+   - Extend auto-save to work with revisions
+   - Add version control for emails
+
+4. **Fix Existing Issues**:
+   - System theme preference detection
+   - Complete authentication flow with profile fields

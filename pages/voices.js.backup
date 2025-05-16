@@ -25,6 +25,7 @@ export default function TonesPage() {
   const [editedExample, setEditedExample] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [viewFeedbackToneId, setViewFeedbackToneId] = useState(null);
   const [userId, setUserId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -121,6 +122,7 @@ export default function TonesPage() {
         instructions: newInstructions,
         example: newExample,
         description: newDescription,
+        feedbackMemory: [], // Array to store feedback history
         createdAt: new Date().toISOString()
       });
       setNewName("");
@@ -198,7 +200,7 @@ export default function TonesPage() {
 
         {/* Create New Tone Form */}
         <Card className="mb-10">
-          <h2 className="text-xl font-semibold text-surface-800 mb-4">Create a New Tone</h2>
+          <h2 className="text-xl font-semibold text-surface-800 dark:text-surface-200 mb-4">Create a New Tone</h2>
           
           {error && (
             <AlertBanner
@@ -382,6 +384,14 @@ export default function TonesPage() {
                           Edit
                         </Button>
                         <Button
+                          onClick={() => setViewFeedbackToneId(viewFeedbackToneId === tone.id ? null : tone.id)}
+                          variant="outline"
+                          size="xs"
+                          icon={<span>💭</span>}
+                        >
+                          {viewFeedbackToneId === tone.id ? 'Hide Feedback' : 'View Feedback'}
+                        </Button>
+                        <Button
                           onClick={() => handleDelete(tone.id)}
                           variant="danger"
                           size="xs"
@@ -390,6 +400,39 @@ export default function TonesPage() {
                           Delete
                         </Button>
                       </div>
+                      
+                      {viewFeedbackToneId === tone.id && (
+                        <div className="mt-4 p-4 bg-surface-50 dark:bg-surface-800 rounded-md">
+                          <h4 className="font-medium text-surface-800 dark:text-surface-200 mb-2">Feedback Memory</h4>
+                          {tone.feedbackMemory && tone.feedbackMemory.length > 0 ? (
+                            <div className="space-y-3">
+                              {tone.feedbackMemory.slice().reverse().map((item, index) => (
+                                <div key={index} className="text-sm border-b border-surface-200 dark:border-surface-700 pb-3">
+                                  <div className="flex justify-between mb-1">
+                                    <span className="font-medium text-primary-600 dark:text-primary-400">Feedback:</span>
+                                    <span className="text-surface-500 dark:text-surface-400 text-xs">
+                                      {new Date(item.timestamp).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  <p className="text-surface-700 dark:text-surface-300 italic mb-2">&ldquo;{item.feedback}&rdquo;</p>
+                                  <div className="text-xs text-surface-500 dark:text-surface-400">
+                                    <div className="mb-1">
+                                      <strong>Original:</strong> {item.originalEmail}...
+                                    </div>
+                                    <div>
+                                      <strong>Revised:</strong> {item.revision}...
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-surface-500 dark:text-surface-400 italic">
+                              No feedback has been stored for this tone yet.
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </Card>

@@ -4,6 +4,7 @@ import {
   collection,
   addDoc,
   getDocs,
+  getDoc,
   query,
   orderBy,
   updateDoc,
@@ -13,6 +14,7 @@ import {
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { Layout, Card, Button, Select, TextArea, AlertBanner, Badge, EmailDisplay } from "../components";
+import { useRouter } from 'next/router';
 
 export default function Home() {
   const [topic, setTopic] = useState("");
@@ -85,7 +87,7 @@ export default function Home() {
     setSavedEmails(emails);
   }
   
-  // Get filtered emails based on selected tone
+  // Get filtered emails based on selected voice
   function getFilteredEmails() {
     if (filterVoiceId === "all") {
       return savedEmails;
@@ -128,7 +130,7 @@ export default function Home() {
 
   async function handleGenerate() {
     if (!topic || !selectedVoice) {
-      setError("Please enter a topic and select a tone first.");
+      setError("Please enter a topic and select a voice first.");
       return;
     }
 
@@ -144,7 +146,7 @@ export default function Home() {
         body: JSON.stringify({ 
           topic,
           userId,
-          toneId: selectedVoice.id,
+          voiceId: selectedVoice.id,
           examples: topExamples || "[None yet]"
         }),
       });
@@ -221,7 +223,7 @@ export default function Home() {
           originalEmail: email.generatedEmail,
           feedback,
           userId,
-          toneId: email.voiceId
+          voiceId: email.voiceId
         }),
       });
 
@@ -238,6 +240,29 @@ export default function Home() {
         revisionSavedAt: new Date().toISOString(),
         editedAt: new Date().toISOString(), // Update the main edited timestamp as well
       });
+
+      // Update voice's feedback memory
+      if (email.voiceId) {
+        const voiceRef = doc(db, "voices", email.voiceId);
+        const voiceDoc = await getDoc(voiceRef);
+        
+        if (voiceDoc.exists()) {
+          const currentFeedback = voiceDoc.data().feedbackMemory || [];
+          const newFeedback = {
+            feedback,
+            originalEmail: email.generatedEmail.substring(0, 200), // Store partial for context
+            revision: data.result.substring(0, 200),
+            timestamp: new Date().toISOString()
+          };
+          
+          // Keep only the last 10 feedback items to prevent unlimited growth
+          const updatedFeedback = [...currentFeedback, newFeedback].slice(-10);
+          
+          await updateDoc(voiceRef, {
+            feedbackMemory: updatedFeedback
+          });
+        }
+      }
 
       fetchEmails();
     } catch (err) {
@@ -344,11 +369,19 @@ export default function Home() {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-primary-700 mb-8">Generate an Email</h1>
+      {/* Hero Section */}
+      <div className="relative overflow-hidden mb-12">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-600/20 to-secondary-600/20 dark:from-primary-600/10 dark:to-secondary-600/10" />
+        <div className="relative max-w-4xl mx-auto py-16 px-6">
+          <h1 className="text-4xl md:text-5xl font-bold text-primary-700 dark:text-primary-300 mb-4">Generate Perfect Emails</h1>
+          <p className="text-xl text-surface-600 dark:text-surface-400">Write emails in your unique voice with AI assistance</p>
+        </div>
+      </div>
+      
+      <div className="max-w-4xl mx-auto px-4">
 
         {/* Generation form */}
-        <Card className="mb-10">
+        <Card className="mb-12 shadow-lg" variant="gradient" hover={false}>
           {error && (
             <AlertBanner
               type="error"
@@ -359,20 +392,43 @@ export default function Home() {
           )}
 
           <div className="space-y-6">
-            <Select
-              id="tone-select"
-              label="Choose a tone:"
-              className="max-w-md"
-              value={selectedVoice?.id || ""}
-              onChange={(e) => {
-                const voiceId = e.target.value;
-                setSelectedVoice(voices.find((v) => v.id === voiceId));
-                // Automatically update the filter to show emails with the selected tone
-                setFilterVoiceId(voiceId);
-              }}
-              options={voices.map(voice => ({ value: voice.id, label: voice.name }))}
-              required
-            />
+            <div>
+              <Select
+                id="voice-select"
+                label="Choose a voice:"
+                className="max-w-md"
+                value={selectedVoice?.id || ""}
+                onChange={(e) => {
+                  const voiceId = e.target.value;
+                  setSelectedVoice(voices.find((v) => v.id === voiceId));
+                  // Automatically update the filter to show emails with the selected voice
+                  setFilterVoiceId(voiceId);
+                }}
+                options={voices.map(voice => ({ 
+                  value: voice.id, 
+                  label: `${voice.name} (${voice.trainingLevel || 'Beginner'})` 
+                }))}
+                required
+              />
+              
+              {selectedVoice && (
+                <div className="mt-3 flex items-center space-x-3">
+                  <Badge variant={selectedVoice.trainingLevel === 'expert' ? 'success' : 'primary'}>
+                    {selectedVoice.trainingLevel || 'Beginner'} Level
+                  </Badge>
+                  <span className="text-sm text-surface-600 dark:text-surface-400">
+                    {selectedVoice.feedbackMemory?.length || 0} training sessions
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => window.location.href = '/voices'}
+                  >
+                    Train this voice →
+                  </Button>
+                </div>
+              )}
+            </div>
 
             <TextArea
               id="topic"
@@ -389,6 +445,8 @@ export default function Home() {
                 onClick={handleGenerate}
                 disabled={isGenerating}
                 isLoading={isGenerating}
+                size="lg"
+                className="shadow-lg"
               >
                 Generate Email
               </Button>
@@ -445,8 +503,8 @@ export default function Home() {
 
         {/* Saved emails */}
         <div>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-surface-800 dark:text-surface-200">Your Saved Emails</h2>
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-2xl font-bold text-primary-700 dark:text-primary-300">Your Saved Emails</h2>
             
             <div className="max-w-xs">
               <Select
@@ -455,7 +513,7 @@ export default function Home() {
                 value={filterVoiceId}
                 onChange={(e) => setFilterVoiceId(e.target.value)}
                 options={[
-                  { value: "all", label: "All Tones" },
+                  { value: "all", label: "All Voices" },
                   ...voices.map(voice => ({ value: voice.id, label: voice.name }))
                 ]}
               />
@@ -468,12 +526,12 @@ export default function Home() {
             </Card>
           ) : getFilteredEmails().length === 0 ? (
             <Card className="text-center p-8 bg-surface-50 dark:bg-surface-800/50">
-              <p className="text-surface-600 dark:text-surface-400">No emails found with the selected tone. Try selecting a different tone or generate a new email.</p>
+              <p className="text-surface-600 dark:text-surface-400">No emails found with the selected voice. Try selecting a different voice or generate a new email.</p>
             </Card>
           ) : (
             <div className="space-y-8">
               {getFilteredEmails().map((email) => (
-                <Card key={email.id} className="overflow-hidden p-0">
+                <Card key={email.id} className="overflow-hidden p-0 shadow-md hover:shadow-xl">
                   <div className="p-6">
                     {/* Email header */}
                     <div className="flex flex-wrap justify-between items-start mb-4">

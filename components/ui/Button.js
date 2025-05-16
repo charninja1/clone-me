@@ -14,25 +14,66 @@ export default function Button({
   onClick,
   ...props
 }) {
-  const baseStyles = 'inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';
+  const baseStyles = `
+    inline-flex items-center justify-center font-medium
+    transition-all duration-200 ease-in-out transform
+    focus:outline-none focus:ring-2 focus:ring-offset-2
+    hover:scale-[1.02] active:scale-[0.98]
+    ${size === 'xs' || size === 'sm' ? 'rounded-lg' : 'rounded-xl'}
+  `;
   
   const variantStyles = {
-    primary: 'bg-primary-600 text-white hover:bg-primary-700 dark:bg-primary-700 dark:hover:bg-primary-800 focus:ring-primary-500 border border-transparent shadow-sm',
-    secondary: 'bg-surface-200 text-surface-800 hover:bg-surface-300 dark:bg-surface-700 dark:text-surface-100 dark:hover:bg-surface-600 focus:ring-surface-400 border border-transparent',
-    outline: 'bg-white text-surface-700 hover:bg-surface-50 dark:bg-surface-800 dark:text-surface-300 dark:hover:bg-surface-700 border border-surface-300 dark:border-surface-600 focus:ring-primary-500',
-    danger: 'bg-error-600 text-white hover:bg-error-700 dark:bg-error-700 dark:hover:bg-error-800 focus:ring-error-500 border border-transparent shadow-sm',
-    success: 'bg-success-600 text-white hover:bg-success-700 dark:bg-success-700 dark:hover:bg-success-800 focus:ring-success-500 border border-transparent shadow-sm',
-    ghost: 'bg-transparent text-surface-600 hover:bg-surface-100 hover:text-surface-800 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200 focus:ring-primary-500 border border-transparent',
+    primary: `
+      gradient-primary text-white
+      hover:shadow-lg focus:ring-primary-500
+      border border-transparent shadow-md
+      hover:brightness-110
+    `,
+    secondary: `
+      gradient-secondary text-white  
+      hover:shadow-lg focus:ring-secondary-500
+      border border-transparent shadow-md
+      hover:brightness-110
+    `,
+    outline: `
+      bg-white text-surface-700 
+      hover:bg-surface-50 dark:bg-surface-800 
+      dark:text-surface-300 dark:hover:bg-surface-700 
+      border-2 border-surface-300 dark:border-surface-600 
+      focus:ring-primary-500 hover:border-primary-500
+      dark:hover:border-primary-400
+    `,
+    danger: `
+      gradient-error text-white
+      hover:shadow-lg focus:ring-error-500
+      border border-transparent shadow-md
+      hover:brightness-110
+    `,
+    success: `
+      gradient-success text-white
+      hover:shadow-lg focus:ring-success-500
+      border border-transparent shadow-md
+      hover:brightness-110
+    `,
+    ghost: `
+      bg-transparent text-surface-600 
+      hover:bg-surface-100 hover:text-surface-800 
+      dark:text-surface-400 dark:hover:bg-surface-800 
+      dark:hover:text-surface-200 focus:ring-primary-500 
+      border border-transparent hover:shadow-sm
+    `,
   };
   
   const sizeStyles = {
-    xs: 'text-xs px-2.5 py-1.5',
-    sm: 'text-sm px-3 py-1.5',
-    md: 'text-sm px-4 py-2',
-    lg: 'text-base px-5 py-2.5',
+    xs: 'text-xs px-3 py-1.5',
+    sm: 'text-sm px-4 py-2',
+    md: 'text-sm px-5 py-2.5',
+    lg: 'text-base px-6 py-3',
   };
   
-  const disabledStyles = disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer';
+  const disabledStyles = disabled 
+    ? 'opacity-50 cursor-not-allowed hover:scale-100' 
+    : 'cursor-pointer';
   
   const buttonClasses = `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${disabledStyles} ${className}`;
 
