@@ -14,3 +14,11 @@ export { default as InteractiveTutorial } from './InteractiveTutorial';
 export { default as HelpTooltip } from './HelpTooltip';
 export { default as SimpleVoiceCreator } from './SimpleVoiceCreator';
 export { default as ContextDetector } from './ContextDetector';
+
+// Email Generation Components
+export { default as GenerationForm } from './GenerationForm';
+export { default as GeneratedEmailDisplay } from './GeneratedEmailDisplay';
+export { default as SavedEmailsList } from './SavedEmailsList';
+
+// Voice Components
+export { default as VoicesList } from './VoicesList';

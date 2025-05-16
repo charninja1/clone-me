@@ -5,6 +5,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { Layout, Card, Button, Badge } from "../components";
 import SimpleVoiceCreator from "../components/SimpleVoiceCreator";
 import HelpTooltip from "../components/HelpTooltip";
+import VoicesList from "../components/VoicesList";
 
 export default function SimpleVoices() {
   const [voices, setVoices] = useState([]);
@@ -96,137 +97,74 @@ export default function SimpleVoices() {
           </div>
         )}
 
-        {/* Voices List */}
-        {loading ? (
-          <div className="text-center py-12">
-            <p>Loading your voices...</p>
-          </div>
-        ) : voices.length === 0 ? (
-          <Card className="text-center py-12">
-            <div className="text-6xl mb-4">🎭</div>
-            <h2 className="text-2xl font-bold mb-3">No Voices Yet</h2>
-            <p className="text-lg text-surface-600 dark:text-surface-400 mb-6">
-              Create your first voice to start writing emails
+        {/* Hero Section */}
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              Your Voices 
+              {!loading && <span className="text-surface-600">({voices.length})</span>}
+            </h2>
+            <p className="text-surface-600 dark:text-surface-400 mt-1">
+              Create different voices for various writing styles
             </p>
+          </div>
+          {voices.length > 0 && (
+            <Button 
+              onClick={() => setShowCreator(true)}
+              className="hover:scale-105 transition-transform"
+            >
+              Add New Voice
+            </Button>
+          )}
+        </div>
+
+        {/* Voices List */}
+        <VoicesList
+          voices={voices}
+          isLoading={loading}
+          onEdit={(voice) => {
+            setEditingVoice(voice);
+            setShowCreator(true);
+          }}
+          onDelete={deleteVoice}
+          onTrain={(voiceId) => window.location.href = '/'}
+        />
+        
+        {voices.length === 0 && !loading && (
+          <div className="text-center mt-8">
             <Button
               size="lg"
               onClick={() => setShowCreator(true)}
+              className="hover:scale-105 transition-transform animate-pulse"
             >
               Create Your First Voice
             </Button>
+          </div>
+        )}
+
+        {/* Help Section */}
+        {voices.length > 0 && (
+          <Card className="mt-8 p-6 bg-primary-50 dark:bg-primary-900/20 animate-fadeIn">
+            <h3 className="text-lg font-semibold mb-3">💡 Voice Training Tips</h3>
+            <ul className="space-y-2 text-sm text-surface-700 dark:text-surface-300">
+              <li className="flex items-start">
+                <span className="mr-2">•</span>
+                <span>Use a voice at least 10 times to reach "Advanced" level</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2">•</span>
+                <span>Provide feedback on generated emails to improve accuracy</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2">•</span>
+                <span>Upload sample emails to train the voice faster</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2">•</span>
+                <span>Create separate voices for work, school, and personal emails</span>
+              </li>
+            </ul>
           </Card>
-        ) : (
-          <>
-            <div className="mb-6 flex justify-between items-center">
-              <HelpTooltip content="You can have multiple voices for different writing styles">
-                <h2 className="text-xl font-semibold">Your Voices ({voices.length})</h2>
-              </HelpTooltip>
-              <Button onClick={() => setShowCreator(true)}>
-                Add New Voice
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {voices.map((voice) => (
-                <Card key={voice.id} className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold">{voice.name}</h3>
-                      <p className="text-sm text-surface-600 dark:text-surface-400 mt-1">
-                        {voice.description || "No description"}
-                      </p>
-                    </div>
-                    <Badge variant={voice.trainingLevel === 'expert' ? 'success' : 'primary'}>
-                      {voice.trainingLevel || 'Beginner'}
-                    </Badge>
-                  </div>
-
-                  {/* Stats */}
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="text-center p-3 bg-surface-50 dark:bg-surface-800 rounded-lg">
-                      <p className="text-2xl font-bold">{voice.feedbackMemory?.length || 0}</p>
-                      <p className="text-sm text-surface-600 dark:text-surface-400">Training Sessions</p>
-                    </div>
-                    <div className="text-center p-3 bg-surface-50 dark:bg-surface-800 rounded-lg">
-                      <p className="text-2xl font-bold">{voice.sampleEmails?.length || 0}</p>
-                      <p className="text-sm text-surface-600 dark:text-surface-400">Email Samples</p>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-2">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => window.location.href = '/'}
-                    >
-                      Use This Voice
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setEditingVoice(voice);
-                        setShowCreator(true);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteVoice(voice.id)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-
-                  {/* Training Progress */}
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-surface-600 dark:text-surface-400">Training Progress</span>
-                      <span className="text-xs text-surface-600 dark:text-surface-400">
-                        {Math.min(100, (voice.feedbackMemory?.length || 0) * 5)}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-surface-200 dark:bg-surface-700 rounded-full h-2">
-                      <div
-                        className="bg-primary-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, (voice.feedbackMemory?.length || 0) * 5)}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-surface-500 mt-1">
-                      {voice.feedbackMemory?.length || 0} / 20 sessions to expert level
-                    </p>
-                  </div>
-                </Card>
-              ))}
-            </div>
-
-            {/* Help Section */}
-            <Card className="mt-8 p-6 bg-primary-50 dark:bg-primary-900/20">
-              <h3 className="text-lg font-semibold mb-3">💡 Voice Training Tips</h3>
-              <ul className="space-y-2 text-sm text-surface-700 dark:text-surface-300">
-                <li className="flex items-start">
-                  <span className="mr-2">•</span>
-                  <span>Use a voice at least 10 times to reach "Advanced" level</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="mr-2">•</span>
-                  <span>Provide feedback on generated emails to improve accuracy</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="mr-2">•</span>
-                  <span>Upload sample emails to train the voice faster</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="mr-2">•</span>
-                  <span>Create separate voices for work, school, and personal emails</span>
-                </li>
-              </ul>
-            </Card>
-          </>
         )}
       </div>
     </Layout>

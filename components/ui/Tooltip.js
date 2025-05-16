@@ -10,6 +10,13 @@ const Tooltip = ({ children, content, position = 'top', className = '' }) => {
     right: 'left-full top-1/2 -translate-y-1/2 ml-2'
   };
   
+  const arrowClasses = {
+    top: 'top-full left-1/2 -translate-x-1/2 border-t-surface-800 dark:border-t-surface-700',
+    bottom: 'bottom-full left-1/2 -translate-x-1/2 border-b-surface-800 dark:border-b-surface-700',
+    left: 'left-full top-1/2 -translate-y-1/2 border-l-surface-800 dark:border-l-surface-700',
+    right: 'right-full top-1/2 -translate-y-1/2 border-r-surface-800 dark:border-r-surface-700'
+  };
+  
   return (
     <div className={`relative inline-block ${className}`}>
       <div
@@ -21,10 +28,15 @@ const Tooltip = ({ children, content, position = 'top', className = '' }) => {
       
       {isVisible && (
         <div
-          className={`absolute z-50 px-2 py-1 text-xs bg-surface-800 dark:bg-surface-700 text-white rounded ${positionClasses[position]}`}
+          className={`absolute z-50 px-3 py-2 text-sm bg-surface-800 dark:bg-surface-700 text-white rounded-lg shadow-lg transition-all duration-200 ${
+            isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+          } ${positionClasses[position]}`}
           style={{ whiteSpace: 'nowrap' }}
         >
           {content}
+          <div 
+            className={`absolute w-0 h-0 border-4 border-transparent ${arrowClasses[position]}`}
+          />
         </div>
       )}
     </div>

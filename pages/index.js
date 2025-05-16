@@ -20,6 +20,9 @@ import SimpleOnboarding from "../components/SimpleOnboarding";
 import SimpleDashboard from "../components/SimpleDashboard";
 import InteractiveTutorial from "../components/InteractiveTutorial";
 import HelpTooltip from "../components/HelpTooltip";
+import GenerationForm from "../components/GenerationForm";
+import GeneratedEmailDisplay from "../components/GeneratedEmailDisplay";
+import SavedEmailsList from "../components/SavedEmailsList";
 
 export default function Home() {
   const [topic, setTopic] = useState("");
@@ -56,6 +59,9 @@ export default function Home() {
   // Email subject state
   const [generatedSubject, setGeneratedSubject] = useState("");
   const [editedSubject, setEditedSubject] = useState("");
+  
+  // Keyboard shortcuts helper
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (user) => {
@@ -66,6 +72,67 @@ export default function Home() {
     });
     return () => unsubAuth();
   }, []);
+  
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      // Cmd/Ctrl + Enter to generate
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (!isGenerating && topic && selectedVoice) {
+          handleGenerate();
+        }
+      }
+      
+      // Cmd/Ctrl + S to save
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        if (response && !autoSave) {
+          handleSave();
+        } else if (editMode) {
+          handleSaveRevision();
+        }
+      }
+      
+      // Cmd/Ctrl + E to toggle edit mode
+      if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
+        e.preventDefault();
+        if (response) {
+          if (editMode) {
+            setEditMode(false);
+            setEditedResponse(response);
+            setEditedSubject(generatedSubject);
+          } else {
+            setEditMode(true);
+            setEditedSubject(generatedSubject);
+          }
+        }
+      }
+      
+      // ? to show shortcuts (only when not typing in an input)
+      if (e.key === '?' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        setShowShortcuts(!showShortcuts);
+      }
+      
+      // Escape to close shortcuts
+      if (e.key === 'Escape' && showShortcuts) {
+        setShowShortcuts(false);
+      }
+      
+      // Cmd/Ctrl + C to copy email (when not in edit mode)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c' && !editMode && response) {
+        // Only if no text is selected
+        if (!window.getSelection().toString()) {
+          e.preventDefault();
+          copyToClipboard(response);
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, [isGenerating, topic, selectedVoice, response, autoSave, editMode, generatedSubject, showShortcuts]);
   
   // Check if user needs onboarding (only once per session)
   useEffect(() => {
@@ -612,6 +679,67 @@ export default function Home() {
         />
       )}
       
+      {/* Keyboard Shortcuts Modal */}
+      {showShortcuts && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Keyboard Shortcuts</h3>
+              <Button
+                onClick={() => setShowShortcuts(false)}
+                variant="outline"
+                size="sm"
+                icon={<span>✕</span>}
+              />
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-surface-600 dark:text-surface-400">Generate Email</span>
+                <kbd className="px-2 py-1 text-xs bg-surface-100 dark:bg-surface-800 rounded">
+                  {navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} + Enter
+                </kbd>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-surface-600 dark:text-surface-400">Save Email</span>
+                <kbd className="px-2 py-1 text-xs bg-surface-100 dark:bg-surface-800 rounded">
+                  {navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} + S
+                </kbd>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-surface-600 dark:text-surface-400">Toggle Edit Mode</span>
+                <kbd className="px-2 py-1 text-xs bg-surface-100 dark:bg-surface-800 rounded">
+                  {navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} + E
+                </kbd>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-surface-600 dark:text-surface-400">Copy Email</span>
+                <kbd className="px-2 py-1 text-xs bg-surface-100 dark:bg-surface-800 rounded">
+                  {navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} + C
+                </kbd>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-surface-600 dark:text-surface-400">Show Shortcuts</span>
+                <kbd className="px-2 py-1 text-xs bg-surface-100 dark:bg-surface-800 rounded">?</kbd>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-surface-600 dark:text-surface-400">Close Dialog</span>
+                <kbd className="px-2 py-1 text-xs bg-surface-100 dark:bg-surface-800 rounded">Esc</kbd>
+              </div>
+            </div>
+            
+            <p className="text-xs text-surface-500 dark:text-surface-400 mt-4">
+              Press ? anytime to see this menu
+            </p>
+          </Card>
+        </div>
+      )}
+      
       {/* Show dashboard for returning users */}
       {!hasVoices && userId && !showOnboarding ? (
         <div className="max-w-6xl mx-auto px-4">
@@ -628,445 +756,70 @@ export default function Home() {
           </div>
           
           <div className="max-w-4xl mx-auto px-4">
+          {/* Generation form */}
+          <GenerationForm
+            voices={voices}
+            selectedVoice={selectedVoice}
+            onVoiceSelect={setSelectedVoice}
+            topic={topic}
+            onTopicChange={setTopic}
+            onGenerate={handleGenerate}
+            isGenerating={isGenerating}
+            error={error}
+            onErrorClose={() => setError("")}
+            filterVoiceId={filterVoiceId}
+            onFilterChange={setFilterVoiceId}
+          />
 
-        {/* Generation form */}
-        <Card className="mb-12 shadow-lg" variant="gradient" hover={false}>
-          {error && (
-            <AlertBanner
-              type="error"
-              message={error}
-              className="mb-6"
-              onClose={() => setError("")}
-            />
-          )}
+          {/* Generated Email Display */}
+          <GeneratedEmailDisplay
+            response={response}
+            generatedSubject={generatedSubject}
+            editMode={editMode}
+            editedResponse={editedResponse}
+            editedSubject={editedSubject}
+            onEditModeToggle={() => {
+              if (editMode) {
+                setEditMode(false);
+                setEditedResponse(response);
+                setEditedSubject(generatedSubject);
+              } else {
+                setEditMode(true);
+                setEditedSubject(generatedSubject);
+              }
+            }}
+            onSubjectChange={setEditedSubject}
+            onResponseChange={setEditedResponse}
+            onQuickRevision={handleQuickRevision}
+            onSaveRevision={handleSaveRevision}
+            onCancelEdit={() => {
+              setEditMode(false);
+              setEditedResponse(response);
+              setEditedSubject(generatedSubject);
+            }}
+            onCopy={copyToClipboard}
+            onOpenGmail={openInGmail}
+            autoSave={autoSave}
+            isGenerating={isGenerating}
+          />
 
-          <div className="space-y-6">
-            <div>
-              <Select
-                id="voice-select"
-                label="Choose a voice:"
-                className="max-w-md"
-                value={selectedVoice?.id || ""}
-                onChange={(e) => {
-                  const voiceId = e.target.value;
-                  setSelectedVoice(voices.find((v) => v.id === voiceId));
-                  // Automatically update the filter to show emails with the selected voice
-                  setFilterVoiceId(voiceId);
-                }}
-                options={voices.map(voice => ({ 
-                  value: voice.id, 
-                  label: `${voice.name} (${voice.trainingLevel || 'Beginner'})` 
-                }))}
-                required
-              />
-              
-              {selectedVoice && (
-                <div className="mt-3 flex items-center space-x-3">
-                  <Badge variant={selectedVoice.trainingLevel === 'expert' ? 'success' : 'primary'}>
-                    {selectedVoice.trainingLevel || 'Beginner'} Level
-                  </Badge>
-                  <span className="text-sm text-surface-600 dark:text-surface-400">
-                    {selectedVoice.feedbackMemory?.length || 0} training sessions
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    onClick={() => window.location.href = '/voices'}
-                  >
-                    Train this voice →
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            <TextArea
-              id="topic"
-              label="What do you want to say?"
-              placeholder="e.g. I need to ask for an extension on my paper due Friday..."
-              rows={4}
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              required
-            />
-            
-            {/* Smart Context Detection */}
-            <ContextDetector
-              topic={topic}
-              voices={voices}
-              onVoiceSelect={(voiceId) => {
-                const voice = voices.find(v => v.id === voiceId);
-                if (voice) {
-                  setSelectedVoice(voice);
-                  setFilterVoiceId(voiceId);
-                }
-              }}
-              selectedVoiceId={selectedVoice?.id}
-            />
-
-            <div>
-              <Button
-                onClick={handleGenerate}
-                disabled={isGenerating}
-                isLoading={isGenerating}
-                size="lg"
-                className="shadow-lg"
-              >
-                Generate Email
-              </Button>
-            </div>
-          </div>
-
-          {response && (
-            <div className="mt-8 border-t border-surface-200 dark:border-surface-700 pt-6">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-medium text-surface-900 dark:text-surface-200">Generated Email</h3>
-                {!editMode && (
-                  <Button
-                    onClick={() => {
-                      setEditMode(true);
-                      setEditedSubject(generatedSubject);
-                    }}
-                    variant="outline"
-                    size="sm"
-                    icon={<span>✏️</span>}
-                  >
-                    Edit
-                  </Button>
-                )}
-              </div>
-              
-              {autoSave && !editMode && (
-                <div className="mb-4">
-                  <div className="p-2 bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800 rounded-md text-xs text-success-700 dark:text-success-400">
-                    This email has been automatically saved. You can find it in your saved emails below.
-                  </div>
-                </div>
-              )}
-              
-              {editMode ? (
-                <div className="space-y-4">
-                  {/* Editable subject line */}
-                  <div>
-                    <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
-                      Subject Line
-                    </label>
-                    <Input
-                      value={editedSubject}
-                      onChange={(e) => setEditedSubject(e.target.value)}
-                      placeholder="Enter email subject"
-                      className="w-full"
-                    />
-                  </div>
-                  
-                  <TextArea
-                    rows={10}
-                    value={editedResponse}
-                    onChange={(e) => setEditedResponse(e.target.value)}
-                    className="font-mono"
-                  />
-                  
-                  {/* Quick feedback buttons */}
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium text-surface-600 dark:text-surface-400">Quick adjustments:</p>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        onClick={() => handleQuickRevision('too formal')}
-                        variant="outline"
-                        size="sm"
-                      >
-                        Too formal 🎩
-                      </Button>
-                      <Button
-                        onClick={() => handleQuickRevision('too casual')}
-                        variant="outline"
-                        size="sm"
-                      >
-                        Too casual 😎
-                      </Button>
-                      <Button
-                        onClick={() => handleQuickRevision('make shorter')}
-                        variant="outline"
-                        size="sm"
-                      >
-                        Make shorter ✂️
-                      </Button>
-                      <Button
-                        onClick={() => handleQuickRevision('add details')}
-                        variant="outline"
-                        size="sm"
-                      >
-                        Add details 📝
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="flex space-x-3">
-                    <Button 
-                      onClick={handleSaveRevision}
-                      variant="primary"
-                    >
-                      Save Changes
-                    </Button>
-                    <Button 
-                      onClick={() => {
-                        setEditMode(false);
-                        setEditedResponse(response);
-                        setEditedSubject(generatedSubject);
-                      }}
-                      variant="outline"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {/* Subject line display */}
-                  {generatedSubject && (
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
-                        Subject Line
-                      </label>
-                      <div className="p-3 bg-surface-50 dark:bg-surface-800 rounded-md border border-surface-200 dark:border-surface-700">
-                        <p className="text-surface-900 dark:text-surface-100 font-medium">{generatedSubject}</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {!autoSave && (
-                    <>
-                      <TextArea
-                        rows={8}
-                        value={response}
-                        onChange={(e) => setResponse(e.target.value)}
-                      />
-                      <div className="mt-4 flex space-x-3">
-                        <Button 
-                          onClick={handleSave}
-                          variant="primary"
-                        >
-                          Save Email
-                        </Button>
-                      </div>
-                    </>
-                  )}
-                </>
-              )}
-              
-              {!editMode && (
-                <div className="mt-4 flex space-x-3">
-                  <Button
-                    onClick={() => copyToClipboard(response)}
-                    variant="outline"
-                    icon={<span>📋</span>}
-                  >
-                    Copy
-                  </Button>
-                  <Button
-                    onClick={() => openInGmail(response, generatedSubject)}
-                    variant="outline"
-                    icon={<span>📧</span>}
-                  >
-                    Open in Gmail
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </Card>
-
-        {/* Saved emails */}
-        <div>
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl font-bold text-primary-700 dark:text-primary-300">Your Saved Emails</h2>
-            
-            <div className="max-w-xs">
-              <Select
-                id="filter-tone"
-                label=""
-                value={filterVoiceId}
-                onChange={(e) => setFilterVoiceId(e.target.value)}
-                options={[
-                  { value: "all", label: "All Voices" },
-                  ...voices.map(voice => ({ value: voice.id, label: voice.name }))
-                ]}
-              />
-            </div>
-          </div>
-          
-          {savedEmails.length === 0 ? (
-            <Card className="text-center p-8 bg-surface-50 dark:bg-surface-800/50">
-              <p className="text-surface-600 dark:text-surface-400">No saved emails yet. Generate your first one above.</p>
-            </Card>
-          ) : getFilteredEmails().length === 0 ? (
-            <Card className="text-center p-8 bg-surface-50 dark:bg-surface-800/50">
-              <p className="text-surface-600 dark:text-surface-400">No emails found with the selected voice. Try selecting a different voice or generate a new email.</p>
-            </Card>
-          ) : (
-            <div className="space-y-8">
-              {getFilteredEmails().map((email) => (
-                <Card key={email.id} className="overflow-hidden p-0 shadow-md hover:shadow-xl">
-                  <div className="p-6">
-                    {/* Email header */}
-                    <div className="flex flex-wrap justify-between items-start mb-4">
-                      <div className="mb-2 mr-4">
-                        <span className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1">
-                          Topic:
-                        </span>
-                        <h3 className="text-lg font-medium text-surface-900 dark:text-surface-200">
-                          {email.originalTopic}
-                        </h3>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {/* Show the tone used for this email */}
-                        <Badge className="mr-2">
-                          {voices.find(v => v.id === email.voiceId)?.name || "Unknown Tone"}
-                        </Badge>
-                        
-                        {email.approved && (
-                          <Badge variant="success">
-                            ✅ Approved
-                          </Badge>
-                        )}
-                        
-                        {email.hasVersions && (
-                          <Button
-                            onClick={() => setShowHistory({ ...showHistory, [email.id]: !showHistory[email.id] })}
-                            variant="outline"
-                            size="sm"
-                            icon={<span>📋</span>}
-                          >
-                            History {email.versions?.length > 0 ? `(${email.versions.length})` : ''}
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Version history - simple list */}
-                    {showHistory[email.id] && email.versions && email.versions.length > 0 && (
-                      <div className="mb-6 p-4 bg-surface-50 dark:bg-surface-800 rounded-lg">
-                        <h4 className="text-sm font-medium text-surface-700 dark:text-surface-300 mb-3">Version History</h4>
-                        <div className="space-y-2">
-                          {email.versions.map((version, index) => (
-                            <div key={index} className="flex items-center justify-between py-2 px-3 bg-white dark:bg-surface-900 rounded">
-                              <div className="flex items-center space-x-3">
-                                <span className="text-sm text-surface-600 dark:text-surface-400">
-                                  {new Date(version.createdAt).toLocaleDateString()} {new Date(version.createdAt).toLocaleTimeString()}
-                                </span>
-                                <Badge variant="outline" size="sm">
-                                  {version.type || 'Version'}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                {selectedVersion[email.id] === index ? (
-                                  <Button
-                                    onClick={() => setSelectedVersion({ ...selectedVersion, [email.id]: null })}
-                                    variant="primary"
-                                    size="sm"
-                                  >
-                                    Hide
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    onClick={() => setSelectedVersion({ ...selectedVersion, [email.id]: index })}
-                                    variant="outline"
-                                    size="sm"
-                                  >
-                                    View
-                                  </Button>
-                                )}
-                                <Button
-                                  onClick={() => {
-                                    // Simple restore - just update the current email
-                                    handleRestoreVersion(email.id, version.content);
-                                  }}
-                                  variant="outline"
-                                  size="sm"
-                                >
-                                  Restore
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Original email or selected version */}
-                    <div className="mb-6">
-                      <h4 className="text-sm font-medium text-surface-700 mb-2">
-                        {selectedVersion[email.id] !== undefined && selectedVersion[email.id] !== null ? 
-                          `Version from ${new Date(email.versions[selectedVersion[email.id]].createdAt).toLocaleDateString()}:` : 
-                          'Current Email:'}
-                      </h4>
-                      <EmailDisplay 
-                        email={selectedVersion[email.id] !== undefined && selectedVersion[email.id] !== null ? 
-                          email.versions[selectedVersion[email.id]].content : 
-                          email.generatedEmail}
-                        onCopy={(text) => copyToClipboard(text)}
-                        onOpenInGmail={(text) => openInGmail(text)}
-                        onDownload={(text) => downloadTextFile(`email-${email.id}.txt`, text)}
-                        onEdit={(newContent) => handleEmailEdit(email.id, newContent)}
-                        editable={selectedVersion[email.id] === undefined || selectedVersion[email.id] === null}
-                        autoSave={autoSave}
-                        showHeader={false}
-                      />
-                    </div>
-                    
-                    {/* Feedback and revision section */}
-                    <div className="border-t border-surface-200 pt-4">
-                      <TextArea
-                        id={`feedback-${email.id}`}
-                        label="Feedback for revision:"
-                        placeholder="What would you like to change in this email?"
-                        rows={3}
-                        value={feedbacks[email.id] || ""}
-                        onChange={(e) => setFeedbacks({ ...feedbacks, [email.id]: e.target.value })}
-                        className="mb-3"
-                      />
-                      <Button
-                        onClick={() => handleRevise(email)}
-                        disabled={loadingId === email.id}
-                        isLoading={loadingId === email.id}
-                      >
-                        Revise with AI
-                      </Button>
-                    </div>
-
-                    {/* Revision display (if exists) */}
-                    {email.revision && (
-                      <div className="mt-6 border-t border-surface-200 pt-4">
-                        <h4 className="text-sm font-medium text-surface-700 mb-2">AI Revision:</h4>
-                        <EmailDisplay 
-                          email={email.revision}
-                          onCopy={(text) => copyToClipboard(text)}
-                          onOpenInGmail={(text) => openInGmail(text)}
-                          onDownload={(text) => downloadTextFile(`revision-${email.id}.txt`, text)}
-                          onEdit={(newContent) => handleRevisionEdit(email.id, newContent)}
-                          editable={true}
-                          autoSave={autoSave}
-                          showHeader={false}
-                        />
-                        
-                        {!email.approved && (
-                          <div className="mt-4">
-                            <Button
-                              onClick={() => handleApprove(email.id)}
-                              variant="success"
-                              icon={<span>✅</span>}
-                            >
-                              Approve for Training
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
+          {/* Saved emails */}
+          <SavedEmailsList
+            emails={savedEmails}
+            voices={voices}
+            filterVoiceId={filterVoiceId}
+            onFilterChange={setFilterVoiceId}
+            onRevise={handleRevise}
+            onApprove={handleApprove}
+            onEmailEdit={handleEmailEdit}
+            onRevisionEdit={handleRevisionEdit}
+            onCopy={copyToClipboard}
+            onOpenGmail={openInGmail}
+            onDownload={downloadTextFile}
+            feedbacks={feedbacks}
+            onFeedbackChange={(emailId, value) => setFeedbacks({ ...feedbacks, [emailId]: value })}
+            loadingId={loadingId}
+          />
         </div>
         </>
       )}
