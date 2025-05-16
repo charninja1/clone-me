@@ -19,10 +19,13 @@ export default function Home() {
   const [response, setResponse] = useState("");
   const [savedEmails, setSavedEmails] = useState([]);
   const [feedbacks, setFeedbacks] = useState({});
+  const [editedEmails, setEditedEmails] = useState({}); // Track manual edits to emails
+  const [editedRevisions, setEditedRevisions] = useState({}); // Track manual edits to revisions
   const [loadingId, setLoadingId] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState(null);
+  const [filterVoiceId, setFilterVoiceId] = useState("all"); // 'all' or a specific voice ID
   const [userId, setUserId] = useState(null);
   const [error, setError] = useState("");
 
@@ -81,6 +84,14 @@ export default function Home() {
     }));
     setSavedEmails(emails);
   }
+  
+  // Get filtered emails based on selected tone
+  function getFilteredEmails() {
+    if (filterVoiceId === "all") {
+      return savedEmails;
+    }
+    return savedEmails.filter(email => email.voiceId === filterVoiceId);
+  }
 
   function cosineSim(a, b) {
     const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
@@ -126,22 +137,16 @@ export default function Home() {
     try {
       const topExamples = await getTop3RelevantExamples(topic);
 
-      const prompt = `
-You are writing an email for a college student named Charlie.
-Use this instruction: "${selectedVoice.instructions}"
-
-Charlie's topic is: "${topic}"
-
-Here are some previously approved emails from this tone:
-${topExamples || "[None yet]"}
-
-Now generate a new email in the same style.
-`;
-
-      const res = await fetch("/api/revise", {
+      // Call our new API endpoint with userId and toneId
+      const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ 
+          topic,
+          userId,
+          toneId: selectedVoice.id,
+          examples: topExamples || "[None yet]"
+        }),
       });
 
       const data = await res.json();
@@ -209,17 +214,15 @@ Now generate a new email in the same style.
     setLoadingId(email.id);
 
     try {
-      const prompt = `
-Revise the following email from Charlie:
-"${email.generatedEmail}"
-
-Charlie's feedback is: "${feedback}"
-`;
-
       const res = await fetch("/api/revise", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ 
+          originalEmail: email.generatedEmail,
+          feedback,
+          userId,
+          toneId: email.voiceId
+        }),
       });
 
       const data = await res.json();
@@ -228,18 +231,13 @@ Charlie's feedback is: "${feedback}"
         throw new Error(data.error || "Failed to revise email");
       }
 
+      // Save the revision with feedback, adding timestamp regardless of auto-save setting
       await updateDoc(doc(db, "emails", email.id), {
         feedbackText: feedback,
         revision: data.result,
+        revisionSavedAt: new Date().toISOString(),
+        editedAt: new Date().toISOString(), // Update the main edited timestamp as well
       });
-
-      // Auto-save revision to Firestore if enabled
-      if (autoSave && data.result.trim()) {
-        await updateDoc(doc(db, "emails", email.id), {
-          revision: data.result,
-          revisionSavedAt: new Date().toISOString(),
-        });
-      }
 
       fetchEmails();
     } catch (err) {
@@ -277,13 +275,58 @@ Charlie's feedback is: "${feedback}"
     }
   }
 
+  // Function to save manual edits to the original email
+  async function handleEmailEdit(emailId, newContent) {
+    try {
+      await updateDoc(doc(db, "emails", emailId), {
+        generatedEmail: newContent,
+        editedAt: new Date().toISOString(),
+        userEdited: true,
+      });
+      
+      // Update local state immediately for better UX
+      setEditedEmails({
+        ...editedEmails,
+        [emailId]: newContent
+      });
+      
+      // Refresh emails list from server to ensure consistency
+      fetchEmails();
+    } catch (err) {
+      setError("Error saving edits: " + err.message);
+    }
+  }
+  
+  // Function to save manual edits to the revision
+  async function handleRevisionEdit(emailId, newContent) {
+    try {
+      await updateDoc(doc(db, "emails", emailId), {
+        revision: newContent,
+        editedAt: new Date().toISOString(),
+        revisionSavedAt: new Date().toISOString(),
+        userEdited: true,
+      });
+      
+      // Update local state immediately for better UX
+      setEditedRevisions({
+        ...editedRevisions,
+        [emailId]: newContent
+      });
+      
+      // Refresh emails list from server to ensure consistency
+      fetchEmails();
+    } catch (err) {
+      setError("Error saving revision edits: " + err.message);
+    }
+  }
+
   function copyToClipboard(text) {
     navigator.clipboard.writeText(text);
     alert("Copied to clipboard!");
   }
 
   function openInGmail(text) {
-    const subject = encodeURIComponent("Follow-up from Charlie");
+    const subject = encodeURIComponent("Follow-up");
     const body = encodeURIComponent(text);
     const mailto = `mailto:?subject=${subject}&body=${body}`;
     window.open(mailto, "_blank");
@@ -321,7 +364,12 @@ Charlie's feedback is: "${feedback}"
               label="Choose a tone:"
               className="max-w-md"
               value={selectedVoice?.id || ""}
-              onChange={(e) => setSelectedVoice(voices.find((v) => v.id === e.target.value))}
+              onChange={(e) => {
+                const voiceId = e.target.value;
+                setSelectedVoice(voices.find((v) => v.id === voiceId));
+                // Automatically update the filter to show emails with the selected tone
+                setFilterVoiceId(voiceId);
+              }}
               options={voices.map(voice => ({ value: voice.id, label: voice.name }))}
               required
             />
@@ -347,21 +395,35 @@ Charlie's feedback is: "${feedback}"
             </div>
           </div>
 
-          {response && !autoSave && (
-            <div className="mt-8 border-t border-surface-200 pt-6">
-              <h3 className="text-lg font-medium text-surface-900 mb-3">Generated Email</h3>
-              <TextArea
-                rows={8}
-                value={response}
-                onChange={(e) => setResponse(e.target.value)}
-              />
+          {response && (
+            <div className="mt-8 border-t border-surface-200 dark:border-surface-700 pt-6">
+              <h3 className="text-lg font-medium text-surface-900 dark:text-surface-200 mb-3">Generated Email</h3>
+              
+              {autoSave ? (
+                <div className="mb-4">
+                  <div className="p-2 bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800 rounded-md text-xs text-success-700 dark:text-success-400">
+                    This email has been automatically saved. You can find it in your saved emails below.
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <TextArea
+                    rows={8}
+                    value={response}
+                    onChange={(e) => setResponse(e.target.value)}
+                  />
+                  <div className="mt-4 flex space-x-3">
+                    <Button 
+                      onClick={handleSave}
+                      variant="primary"
+                    >
+                      Save Email
+                    </Button>
+                  </div>
+                </>
+              )}
+              
               <div className="mt-4 flex space-x-3">
-                <Button 
-                  onClick={handleSave}
-                  variant="primary"
-                >
-                  Save Email
-                </Button>
                 <Button
                   onClick={() => copyToClipboard(response)}
                   variant="outline"
@@ -383,32 +445,58 @@ Charlie's feedback is: "${feedback}"
 
         {/* Saved emails */}
         <div>
-          <h2 className="text-xl font-semibold text-surface-800 mb-6">Your Saved Emails</h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold text-surface-800 dark:text-surface-200">Your Saved Emails</h2>
+            
+            <div className="max-w-xs">
+              <Select
+                id="filter-tone"
+                label=""
+                value={filterVoiceId}
+                onChange={(e) => setFilterVoiceId(e.target.value)}
+                options={[
+                  { value: "all", label: "All Tones" },
+                  ...voices.map(voice => ({ value: voice.id, label: voice.name }))
+                ]}
+              />
+            </div>
+          </div>
           
           {savedEmails.length === 0 ? (
-            <Card className="text-center p-8 bg-surface-50">
-              <p className="text-surface-600">No saved emails yet. Generate your first one above.</p>
+            <Card className="text-center p-8 bg-surface-50 dark:bg-surface-800/50">
+              <p className="text-surface-600 dark:text-surface-400">No saved emails yet. Generate your first one above.</p>
+            </Card>
+          ) : getFilteredEmails().length === 0 ? (
+            <Card className="text-center p-8 bg-surface-50 dark:bg-surface-800/50">
+              <p className="text-surface-600 dark:text-surface-400">No emails found with the selected tone. Try selecting a different tone or generate a new email.</p>
             </Card>
           ) : (
             <div className="space-y-8">
-              {savedEmails.map((email) => (
+              {getFilteredEmails().map((email) => (
                 <Card key={email.id} className="overflow-hidden p-0">
                   <div className="p-6">
                     {/* Email header */}
                     <div className="flex flex-wrap justify-between items-start mb-4">
                       <div className="mb-2 mr-4">
-                        <span className="block text-xs font-medium text-surface-500 mb-1">
+                        <span className="block text-xs font-medium text-surface-500 dark:text-surface-400 mb-1">
                           Topic:
                         </span>
-                        <h3 className="text-lg font-medium text-surface-900">
+                        <h3 className="text-lg font-medium text-surface-900 dark:text-surface-200">
                           {email.originalTopic}
                         </h3>
                       </div>
-                      {email.approved && (
-                        <Badge variant="success">
-                          ✅ Approved
+                      <div className="flex items-center space-x-2">
+                        {/* Show the tone used for this email */}
+                        <Badge className="mr-2">
+                          {voices.find(v => v.id === email.voiceId)?.name || "Unknown Tone"}
                         </Badge>
-                      )}
+                        
+                        {email.approved && (
+                          <Badge variant="success">
+                            ✅ Approved
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     
                     {/* Original email */}
@@ -416,9 +504,12 @@ Charlie's feedback is: "${feedback}"
                       <h4 className="text-sm font-medium text-surface-700 mb-2">Email:</h4>
                       <EmailDisplay 
                         email={email.generatedEmail}
-                        onCopy={() => copyToClipboard(email.generatedEmail)}
-                        onOpenInGmail={() => openInGmail(email.generatedEmail)}
-                        onDownload={() => downloadTextFile(`email-${email.id}.txt`, email.generatedEmail)}
+                        onCopy={(text) => copyToClipboard(text)}
+                        onOpenInGmail={(text) => openInGmail(text)}
+                        onDownload={(text) => downloadTextFile(`email-${email.id}.txt`, text)}
+                        onEdit={(newContent) => handleEmailEdit(email.id, newContent)}
+                        editable={true}
+                        autoSave={autoSave}
                         showHeader={false}
                       />
                     </div>
@@ -449,9 +540,12 @@ Charlie's feedback is: "${feedback}"
                         <h4 className="text-sm font-medium text-surface-700 mb-2">AI Revision:</h4>
                         <EmailDisplay 
                           email={email.revision}
-                          onCopy={() => copyToClipboard(email.revision)}
-                          onOpenInGmail={() => openInGmail(email.revision)}
-                          onDownload={() => downloadTextFile(`revision-${email.id}.txt`, email.revision)}
+                          onCopy={(text) => copyToClipboard(text)}
+                          onOpenInGmail={(text) => openInGmail(text)}
+                          onDownload={(text) => downloadTextFile(`revision-${email.id}.txt`, text)}
+                          onEdit={(newContent) => handleRevisionEdit(email.id, newContent)}
+                          editable={true}
+                          autoSave={autoSave}
                           showHeader={false}
                         />
                         

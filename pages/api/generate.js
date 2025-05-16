@@ -1,14 +1,54 @@
-export default async function handler(req, res) {
-  const { topic } = req.body;
+import { db } from "../../lib/firebase";
+import { getDoc, doc } from "firebase/firestore";
 
-  const prompt = `
-Write an email to a college professor in the tone of Charlie Peroulas. 
-Make it polite, casual, direct, and not too formal. Include context:
-"${topic}"
-End with a friendly signoff like "Thanks!" or "Best," and sign as Charlie Peroulas.
-`;
+export default async function handler(req, res) {
+  const { topic, userId, toneId, examples = "[None yet]" } = req.body;
 
   try {
+    // Get user information from Firestore
+    let firstName = "";
+    let lastName = "";
+    let fullName = "";
+    
+    if (userId) {
+      const userDoc = await getDoc(doc(db, "users", userId));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        firstName = userData.firstName || "";
+        lastName = userData.lastName || "";
+        fullName = `${firstName} ${lastName}`.trim();
+      }
+    }
+    
+    // If no user data found, use a fallback name
+    if (!fullName) {
+      fullName = "User";
+    }
+    
+    // Get tone information if provided
+    let toneInstructions = "Make it polite, casual, direct, and not too formal.";
+    
+    if (toneId) {
+      const toneDoc = await getDoc(doc(db, "voices", toneId));
+      if (toneDoc.exists()) {
+        const toneData = toneDoc.data();
+        toneInstructions = toneData.instructions || toneInstructions;
+      }
+    }
+
+    const prompt = `
+Write an email in the name of ${fullName}. 
+${toneInstructions}
+Include context:
+"${topic}"
+
+Here are some previously approved emails from this tone:
+${examples}
+
+Generate a new email in this style.
+End with a friendly signoff like "Thanks!" or "Best," and sign as ${fullName}.
+`;
+
     // If no OpenAI API key is configured, use mock data for development
     if (!process.env.OPENAI_API_KEY) {
       console.warn("No OpenAI API key found. Using mock data.");
@@ -18,7 +58,7 @@ End with a friendly signoff like "Thanks!" or "Best," and sign as Charlie Peroul
       I hope you're doing well. I had a question about the homework due this week. I wanted to ask if we're allowed to use external libraries for the final part of the assignment.
 
       Thanks!
-      Charlie Peroulas
+      ${fullName}
       `;
       return res.status(200).json({ result: mockEmail });
     }
