@@ -7,17 +7,37 @@ import { onAuthStateChanged } from 'firebase/auth';
 export default function LandingPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   
   // Check authentication and redirect to dashboard if logged in
   useEffect(() => {
+    if (!auth) {
+      setIsLoading(false);
+      return;
+    }
+    
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         router.push('/dashboard');
+      } else {
+        setIsLoading(false);
       }
     });
     
     return () => unsubscribe();
   }, [router]);
+  
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-surface-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const features = [
     {
