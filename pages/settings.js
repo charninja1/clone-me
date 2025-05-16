@@ -9,14 +9,21 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
-import { Layout, Card, Button, Select, Checkbox, AlertBanner } from "../components";
+import { 
+  onAuthStateChanged, 
+  updatePassword, 
+  reauthenticateWithCredential,
+  EmailAuthProvider 
+} from "firebase/auth";
+import { Layout, Card, Button, Select, Checkbox, AlertBanner, Input } from "../components";
 import ThemeSelector from "../components/ui/ThemeSelector";
 import { useTheme, THEMES } from "../contexts/ThemeContext";
 
 export default function SettingsPage() {
   const [userId, setUserId] = useState(null);
   const [userEmail, setUserEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [voices, setVoices] = useState([]);
   const [defaultVoiceId, setDefaultVoiceId] = useState("");
   const [darkMode, setDarkMode] = useState(false);
@@ -25,6 +32,13 @@ export default function SettingsPage() {
   const [autoGmail, setAutoGmail] = useState(false);
   const [status, setStatus] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Password change states
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -44,6 +58,8 @@ export default function SettingsPage() {
     if (snap.exists()) {
       const data = snap.data();
       setDefaultVoiceId(data.defaultVoiceId || "");
+      setFirstName(data.firstName || "");
+      setLastName(data.lastName || "");
       setDarkMode(data.settings?.darkMode || false);
       setAutoSave(data.settings?.autoSave || false);
       setAutoCopy(data.settings?.autoCopy || false);
@@ -65,6 +81,8 @@ export default function SettingsPage() {
     try {
       const userRef = doc(db, "users", userId);
       await updateDoc(userRef, {
+        firstName,
+        lastName,
         defaultVoiceId,
         settings: {
           darkMode,
@@ -82,23 +100,111 @@ export default function SettingsPage() {
       setIsLoading(false);
     }
   }
+  
+  async function handlePasswordChange(e) {
+    e.preventDefault();
+    setPasswordError("");
+    
+    // Input validation
+    if (!currentPassword) {
+      setPasswordError("Current password is required");
+      return;
+    }
+    
+    if (!newPassword) {
+      setPasswordError("New password is required");
+      return;
+    }
+    
+    if (newPassword.length < 8) {
+      setPasswordError("Password must be at least 8 characters");
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords don't match");
+      return;
+    }
+    
+    setPasswordLoading(true);
+    
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error("You must be logged in to change your password");
+      }
+      
+      // Re-authenticate user before password change
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+      
+      // Update password
+      await updatePassword(user, newPassword);
+      
+      // Clear form and show success
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setStatus("✅ Password changed successfully!");
+      setTimeout(() => setStatus(""), 3000);
+    } catch (error) {
+      // Handle specific auth errors
+      if (error.code === 'auth/wrong-password') {
+        setPasswordError("Current password is incorrect");
+      } else if (error.code === 'auth/weak-password') {
+        setPasswordError("New password is too weak");
+      } else if (error.code === 'auth/requires-recent-login') {
+        setPasswordError("Please log out and log back in to change your password");
+      } else {
+        setPasswordError(error.message);
+      }
+    } finally {
+      setPasswordLoading(false);
+    }
+  }
 
   return (
     <Layout>
       <div className="max-w-3xl mx-auto">
         <Card className="mb-8">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-primary-700 mb-0">Account Settings</h1>
-            <div className="text-sm bg-surface-100 px-3 py-1 rounded-md">
+            <h1 className="text-2xl font-bold text-primary-700 dark:text-primary-300 mb-0">Account Settings</h1>
+            <div className="text-sm bg-surface-100 dark:bg-surface-700 px-3 py-1 rounded-md">
               <span className="font-medium">Email:</span> {userEmail}
             </div>
           </div>
 
           <div className="space-y-8">
+            {/* Personal Information */}
+            <Card className="mb-8">
+              <h3 className="text-lg font-medium text-surface-900 dark:text-surface-100 mb-4">Personal Information</h3>
+              <p className="text-surface-600 dark:text-surface-400 mb-4">
+                Your name will be used to personalize the generated emails.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+                <Input
+                  id="first-name"
+                  label="First Name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="John"
+                  autoComplete="given-name"
+                />
+                <Input
+                  id="last-name"
+                  label="Last Name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Doe"
+                  autoComplete="family-name"
+                />
+              </div>
+            </Card>
+
             {/* Default Tone */}
             <Card className="mb-8">
-              <h3 className="text-lg font-medium text-surface-900 mb-4">Default Tone</h3>
-              <p className="text-surface-600 mb-4">
+              <h3 className="text-lg font-medium text-surface-900 dark:text-surface-100 mb-4">Default Tone</h3>
+              <p className="text-surface-600 dark:text-surface-400 mb-4">
                 Select a default tone that will be automatically selected when generating new emails.
               </p>
               <div className="max-w-xs">
@@ -112,16 +218,76 @@ export default function SettingsPage() {
                 />
               </div>
             </Card>
+            
+            {/* Change Password */}
+            <Card className="mb-8">
+              <h3 className="text-lg font-medium text-surface-900 dark:text-surface-100 mb-4">Change Password</h3>
+              <p className="text-surface-600 dark:text-surface-400 mb-4">
+                Update your account password. You'll need to enter your current password for verification.
+              </p>
+              
+              <form onSubmit={handlePasswordChange} className="mt-4 max-w-md">
+                <div className="space-y-4">
+                  <Input
+                    id="current-password"
+                    label="Current Password"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    autoComplete="current-password"
+                    required
+                  />
+                  
+                  <Input
+                    id="new-password"
+                    label="New Password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    autoComplete="new-password"
+                    helpText="Password must be at least 8 characters"
+                    required
+                  />
+                  
+                  <Input
+                    id="confirm-password"
+                    label="Confirm New Password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    autoComplete="new-password"
+                    required
+                  />
+                  
+                  {passwordError && (
+                    <div className="text-error-600 dark:text-error-400 text-sm mt-2">
+                      {passwordError}
+                    </div>
+                  )}
+                  
+                  <div className="pt-2">
+                    <Button
+                      type="submit"
+                      variant="secondary"
+                      isLoading={passwordLoading}
+                      disabled={passwordLoading}
+                    >
+                      Update Password
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            </Card>
 
             {/* Preferences */}
             <Card>
-              <h3 className="text-lg font-medium text-surface-900 mb-4">Preferences</h3>
+              <h3 className="text-lg font-medium text-surface-900 dark:text-surface-100 mb-4">Preferences</h3>
               
               <div className="space-y-4">
                 <div>
                   <h4 className="font-medium mb-2">Theme</h4>
                   <div className="mb-2">
-                    <ThemeSelector />
+                    <ThemeSelector showLabel={true} />
                   </div>
                   <p className="text-sm text-surface-500 dark:text-surface-400 mb-4">
                     Choose between light mode, dark mode, or your system preference.  
