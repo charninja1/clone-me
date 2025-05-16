@@ -74,7 +74,7 @@ export default function TonesPage() {
     setEditingToneId(null);
     fetchTones();
   }
-
+  
   function cancelEdit() {
     setEditingToneId(null);
     setEditedName("");
