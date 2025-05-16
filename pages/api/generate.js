@@ -287,20 +287,31 @@ Context for this email: "${topic}"
 ${feedbackSection}
 
 Write the email now. Match the exact style and brevity of the samples provided.
+
+Also, provide a concise, appropriate subject line for this email.
+
+Format your response as:
+SUBJECT: [subject line here]
+EMAIL:
+[email body here]
 `;
 
     // If no OpenAI API key is configured, use mock data for development
     if (!process.env.OPENAI_API_KEY) {
       console.warn("No OpenAI API key found. Using mock data.");
-      const mockEmail = `
-      Hello Professor,
+      const mockEmail = `Hello Professor,
 
-      I hope you're doing well. I had a question about the homework due this week. I wanted to ask if we're allowed to use external libraries for the final part of the assignment.
+I hope you're doing well. I had a question about the homework due this week. I wanted to ask if we're allowed to use external libraries for the final part of the assignment.
 
-      Thanks!
-      ${fullName}
-      `;
-      return res.status(200).json({ result: mockEmail });
+Thanks!
+${fullName}`;
+      
+      const mockSubject = "Question about homework assignment";
+      
+      return res.status(200).json({ 
+        result: mockEmail,
+        subject: mockSubject 
+      });
     }
 
     // Otherwise, use the real OpenAI API
@@ -326,7 +337,29 @@ Write the email now. Match the exact style and brevity of the samples provided.
 
     const data = await completion.json();
     const message = data.choices?.[0]?.message?.content || "No message found";
-    return res.status(200).json({ result: message });
+    
+    // Parse the response to extract subject and email body
+    let subject = "";
+    let emailBody = message;
+    
+    // Look for the subject line pattern
+    const subjectMatch = message.match(/SUBJECT:\s*(.+)\nEMAIL:/i);
+    if (subjectMatch) {
+      subject = subjectMatch[1].trim();
+      // Extract email body after "EMAIL:" marker
+      const emailMatch = message.match(/EMAIL:\s*([\s\S]+)/i);
+      if (emailMatch) {
+        emailBody = emailMatch[1].trim();
+      }
+    } else {
+      // Fallback: Try to generate a subject from the topic if not found
+      subject = topic.slice(0, 50) + (topic.length > 50 ? "..." : "");
+    }
+    
+    return res.status(200).json({ 
+      result: emailBody,
+      subject: subject 
+    });
   } catch (err) {
     console.error("ERROR:", err);
     return res.status(500).json({ error: "Failed to generate email: " + err.message });

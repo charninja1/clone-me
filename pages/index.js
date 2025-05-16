@@ -48,6 +48,14 @@ export default function Home() {
   // Inline editing states
   const [editMode, setEditMode] = useState(false);
   const [editedResponse, setEditedResponse] = useState("");
+  
+  // Version history states
+  const [showHistory, setShowHistory] = useState({});
+  const [selectedVersion, setSelectedVersion] = useState({});
+  
+  // Email subject state
+  const [generatedSubject, setGeneratedSubject] = useState("");
+  const [editedSubject, setEditedSubject] = useState("");
 
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (user) => {
@@ -197,6 +205,7 @@ export default function Home() {
       }
       
       setResponse(data.result);
+      setGeneratedSubject(data.subject || "");
 
       if (autoSave && data.result.trim()) {
         await addDoc(collection(db, "emails"), {
@@ -204,6 +213,7 @@ export default function Home() {
           voiceId: selectedVoice.id,
           originalTopic: topic,
           generatedEmail: data.result,
+          subject: data.subject || "",
           feedbackText: "",
           revision: "",
           approved: false,
@@ -213,10 +223,11 @@ export default function Home() {
       }
 
       if (autoCopy) copyToClipboard(data.result);
-      if (autoGmail) openInGmail(data.result);
+      if (autoGmail) openInGmail(data.result, data.subject);
       
-      // Initialize edited response for edit mode
+      // Initialize edited response and subject for edit mode
       setEditedResponse(data.result);
+      setEditedSubject(data.subject || "");
     } catch (err) {
       setError("Error generating email: " + err.message);
     } finally {
@@ -257,21 +268,50 @@ export default function Home() {
   async function handleSaveRevision() {
     try {
       setResponse(editedResponse);
+      setGeneratedSubject(editedSubject);
       setEditMode(false);
       
       // Save to database if auto-save is enabled
       if (autoSave) {
-        await addDoc(collection(db, "emails"), {
-          userId,
-          voiceId: selectedVoice.id,
-          originalTopic: topic,
-          generatedEmail: editedResponse,
-          feedbackText: "",
-          revision: editedResponse,
-          approved: false,
-          editedAt: new Date().toISOString(),
-          isRevision: true
-        });
+        // Check if this is a revision of an existing email
+        const existingEmail = savedEmails.find(email => 
+          email.generatedEmail === response && email.originalTopic === topic
+        );
+        
+        if (existingEmail) {
+          // Update existing email with version history
+          const versions = existingEmail.versions || [];
+          versions.push({
+            content: existingEmail.generatedEmail,
+            subject: existingEmail.subject || generatedSubject,
+            createdAt: existingEmail.editedAt || existingEmail.createdAt,
+            type: 'original'
+          });
+          
+          await updateDoc(doc(db, "emails", existingEmail.id), {
+            generatedEmail: editedResponse,
+            subject: editedSubject,
+            versions: versions,
+            editedAt: new Date().toISOString(),
+            hasVersions: true
+          });
+        } else {
+          // Create new email
+          await addDoc(collection(db, "emails"), {
+            userId,
+            voiceId: selectedVoice.id,
+            originalTopic: topic,
+            generatedEmail: editedResponse,
+            subject: editedSubject,
+            feedbackText: "",
+            revision: editedResponse,
+            approved: false,
+            editedAt: new Date().toISOString(),
+            isRevision: true,
+            versions: []
+          });
+        }
+        
         fetchEmails();
       }
       
@@ -279,6 +319,40 @@ export default function Home() {
       if (autoCopy) copyToClipboard(editedResponse);
     } catch (err) {
       setError("Error saving revision: " + err.message);
+    }
+  }
+  
+  async function handleRestoreVersion(emailId, versionContent) {
+    try {
+      const emailDoc = savedEmails.find(e => e.id === emailId);
+      if (!emailDoc) return;
+      
+      // Save current version to history
+      const versions = emailDoc.versions || [];
+      versions.push({
+        content: emailDoc.generatedEmail,
+        createdAt: emailDoc.editedAt || emailDoc.createdAt,
+        type: 'previous'
+      });
+      
+      // Update the email with the restored version
+      await updateDoc(doc(db, "emails", emailId), {
+        generatedEmail: versionContent,
+        versions: versions,
+        editedAt: new Date().toISOString(),
+        hasVersions: true
+      });
+      
+      // Refresh the emails list
+      fetchEmails();
+      
+      // Clear selected version view
+      setSelectedVersion({ ...selectedVersion, [emailId]: null });
+      
+      // Show success message
+      alert("Version restored successfully!");
+    } catch (err) {
+      setError("Error restoring version: " + err.message);
     }
   }
 
@@ -295,6 +369,8 @@ export default function Home() {
         revision: "",
         approved: false,
         editedAt: new Date().toISOString(),
+        versions: [],
+        hasVersions: false
       });
 
       setTopic("");
@@ -333,12 +409,23 @@ export default function Home() {
         throw new Error(data.error || "Failed to revise email");
       }
 
-      // Save the revision with feedback, adding timestamp regardless of auto-save setting
+      // Save the revision with feedback and update version history
+      const versions = email.versions || [];
+      // Add current version to history before updating
+      versions.push({
+        content: email.generatedEmail,
+        createdAt: email.editedAt || email.createdAt,
+        type: 'before-revision'
+      });
+      
       await updateDoc(doc(db, "emails", email.id), {
         feedbackText: feedback,
         revision: data.result,
+        generatedEmail: data.result, // Update the main email content
         revisionSavedAt: new Date().toISOString(),
-        editedAt: new Date().toISOString(), // Update the main edited timestamp as well
+        editedAt: new Date().toISOString(),
+        versions: versions,
+        hasVersions: true
       });
 
       // Update voice's feedback memory
@@ -450,10 +537,12 @@ export default function Home() {
     alert("Copied to clipboard!");
   }
 
-  function openInGmail(text) {
-    const subject = encodeURIComponent("Follow-up");
+  function openInGmail(text, subject = "") {
+    // Try to extract subject from the topic or use a default
+    const emailSubject = subject || topic || "Email";
+    const encodedSubject = encodeURIComponent(emailSubject);
     const body = encodeURIComponent(text);
-    const mailto = `mailto:?subject=${subject}&body=${body}`;
+    const mailto = `mailto:?subject=${encodedSubject}&body=${body}`;
     window.open(mailto, "_blank");
   }
 
@@ -633,7 +722,10 @@ export default function Home() {
                 <h3 className="text-lg font-medium text-surface-900 dark:text-surface-200">Generated Email</h3>
                 {!editMode && (
                   <Button
-                    onClick={() => setEditMode(true)}
+                    onClick={() => {
+                      setEditMode(true);
+                      setEditedSubject(generatedSubject);
+                    }}
                     variant="outline"
                     size="sm"
                     icon={<span>✏️</span>}
@@ -653,6 +745,19 @@ export default function Home() {
               
               {editMode ? (
                 <div className="space-y-4">
+                  {/* Editable subject line */}
+                  <div>
+                    <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                      Subject Line
+                    </label>
+                    <Input
+                      value={editedSubject}
+                      onChange={(e) => setEditedSubject(e.target.value)}
+                      placeholder="Enter email subject"
+                      className="w-full"
+                    />
+                  </div>
+                  
                   <TextArea
                     rows={10}
                     value={editedResponse}
@@ -706,6 +811,7 @@ export default function Home() {
                       onClick={() => {
                         setEditMode(false);
                         setEditedResponse(response);
+                        setEditedSubject(generatedSubject);
                       }}
                       variant="outline"
                     >
@@ -715,6 +821,18 @@ export default function Home() {
                 </div>
               ) : (
                 <>
+                  {/* Subject line display */}
+                  {generatedSubject && (
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                        Subject Line
+                      </label>
+                      <div className="p-3 bg-surface-50 dark:bg-surface-800 rounded-md border border-surface-200 dark:border-surface-700">
+                        <p className="text-surface-900 dark:text-surface-100 font-medium">{generatedSubject}</p>
+                      </div>
+                    </div>
+                  )}
+                  
                   {!autoSave && (
                     <>
                       <TextArea
@@ -745,7 +863,7 @@ export default function Home() {
                     Copy
                   </Button>
                   <Button
-                    onClick={() => openInGmail(response)}
+                    onClick={() => openInGmail(response, generatedSubject)}
                     variant="outline"
                     icon={<span>📧</span>}
                   >
@@ -810,19 +928,86 @@ export default function Home() {
                             ✅ Approved
                           </Badge>
                         )}
+                        
+                        {email.hasVersions && (
+                          <Button
+                            onClick={() => setShowHistory({ ...showHistory, [email.id]: !showHistory[email.id] })}
+                            variant="outline"
+                            size="sm"
+                            icon={<span>📋</span>}
+                          >
+                            History {email.versions?.length > 0 ? `(${email.versions.length})` : ''}
+                          </Button>
+                        )}
                       </div>
                     </div>
                     
-                    {/* Original email */}
+                    {/* Version history - simple list */}
+                    {showHistory[email.id] && email.versions && email.versions.length > 0 && (
+                      <div className="mb-6 p-4 bg-surface-50 dark:bg-surface-800 rounded-lg">
+                        <h4 className="text-sm font-medium text-surface-700 dark:text-surface-300 mb-3">Version History</h4>
+                        <div className="space-y-2">
+                          {email.versions.map((version, index) => (
+                            <div key={index} className="flex items-center justify-between py-2 px-3 bg-white dark:bg-surface-900 rounded">
+                              <div className="flex items-center space-x-3">
+                                <span className="text-sm text-surface-600 dark:text-surface-400">
+                                  {new Date(version.createdAt).toLocaleDateString()} {new Date(version.createdAt).toLocaleTimeString()}
+                                </span>
+                                <Badge variant="outline" size="sm">
+                                  {version.type || 'Version'}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                {selectedVersion[email.id] === index ? (
+                                  <Button
+                                    onClick={() => setSelectedVersion({ ...selectedVersion, [email.id]: null })}
+                                    variant="primary"
+                                    size="sm"
+                                  >
+                                    Hide
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    onClick={() => setSelectedVersion({ ...selectedVersion, [email.id]: index })}
+                                    variant="outline"
+                                    size="sm"
+                                  >
+                                    View
+                                  </Button>
+                                )}
+                                <Button
+                                  onClick={() => {
+                                    // Simple restore - just update the current email
+                                    handleRestoreVersion(email.id, version.content);
+                                  }}
+                                  variant="outline"
+                                  size="sm"
+                                >
+                                  Restore
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Original email or selected version */}
                     <div className="mb-6">
-                      <h4 className="text-sm font-medium text-surface-700 mb-2">Email:</h4>
+                      <h4 className="text-sm font-medium text-surface-700 mb-2">
+                        {selectedVersion[email.id] !== undefined && selectedVersion[email.id] !== null ? 
+                          `Version from ${new Date(email.versions[selectedVersion[email.id]].createdAt).toLocaleDateString()}:` : 
+                          'Current Email:'}
+                      </h4>
                       <EmailDisplay 
-                        email={email.generatedEmail}
+                        email={selectedVersion[email.id] !== undefined && selectedVersion[email.id] !== null ? 
+                          email.versions[selectedVersion[email.id]].content : 
+                          email.generatedEmail}
                         onCopy={(text) => copyToClipboard(text)}
                         onOpenInGmail={(text) => openInGmail(text)}
                         onDownload={(text) => downloadTextFile(`email-${email.id}.txt`, text)}
                         onEdit={(newContent) => handleEmailEdit(email.id, newContent)}
-                        editable={true}
+                        editable={selectedVersion[email.id] === undefined || selectedVersion[email.id] === null}
                         autoSave={autoSave}
                         showHeader={false}
                       />

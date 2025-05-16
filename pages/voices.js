@@ -16,6 +16,52 @@ import VoiceOnboardingWizard from "../components/VoiceOnboardingWizard";
 import VoiceCalibration from "../components/VoiceCalibration";
 import FeedbackMemoryVisualization from "../components/FeedbackMemoryVisualization";
 
+// Voice template definitions
+const voiceTemplates = [
+  {
+    id: 'professional',
+    name: 'Professional Emails',
+    description: 'For business and formal communication',
+    instructions: 'Write in a professional, clear, and concise manner. Use formal language and proper grammar. Be respectful and courteous. Avoid slang and overly casual expressions. Structure emails with clear paragraphs and logical flow.',
+    example: 'Dear Mr. Johnson,\n\nI hope this email finds you well. I am writing to follow up on our meeting last Tuesday regarding the Q3 marketing strategy.\n\nAs discussed, I have prepared the preliminary analysis and would appreciate your feedback.\n\nBest regards,\n[Your name]'
+  },
+  {
+    id: 'thank-you',
+    name: 'Thank You Notes',
+    description: 'Express gratitude and appreciation',
+    instructions: 'Write warm, sincere thank you messages. Be specific about what you are grateful for. Express genuine appreciation. Keep the tone positive and heartfelt. Mention the impact of their help or gift.',
+    example: 'Hi Sarah,\n\nI wanted to take a moment to thank you for your help with the presentation yesterday. Your insights on the market analysis were invaluable.\n\nThanks to your input, the client was thoroughly impressed!\n\nWarmly,\n[Your name]'
+  },
+  {
+    id: 'casual',
+    name: 'Casual Messages',
+    description: 'Friendly, informal communication',
+    instructions: 'Write in a relaxed, conversational tone. Use contractions and informal language. Be friendly and approachable. Keep it light and easy-going. Use everyday vocabulary.',
+    example: 'Hey Mike!\n\nJust wanted to check in and see how things are going. It\'s been a while since we caught up.\n\nLet me know if you\'re free for coffee this week!\n\nCheers,\n[Your name]'
+  },
+  {
+    id: 'meeting-request',
+    name: 'Meeting Requests',
+    description: 'Schedule meetings professionally',
+    instructions: 'Be clear about the meeting purpose and agenda. Suggest specific times and be flexible. Include all necessary details (location, duration, attendees). Be respectful of their time. Provide context for the meeting.',
+    example: 'Subject: Meeting Request - Project Timeline Discussion\n\nHi Team,\n\nI\'d like to schedule a meeting to discuss our project timeline and upcoming milestones.\n\nWould Thursday, March 15th at 2:00 PM work for everyone? We\'ll need about 30 minutes.\n\nPlease let me know if this time works or suggest alternatives.\n\nBest,\n[Your name]'
+  },
+  {
+    id: 'follow-up',
+    name: 'Follow-up Emails',
+    description: 'Check in on previous conversations',
+    instructions: 'Reference the previous interaction clearly. Be polite but persistent. Provide context and remind them of key points. Include a clear call to action. Keep it concise and to the point.',
+    example: 'Hi Alex,\n\nI wanted to follow up on our conversation from last week about the website redesign project.\n\nHave you had a chance to review the proposal I sent?\n\nI\'d be happy to answer any questions you might have.\n\nLooking forward to hearing from you.\n\nBest regards,\n[Your name]'
+  },
+  {
+    id: 'academic',
+    name: 'Academic Emails',
+    description: 'For professors and academic contexts',
+    instructions: 'Use formal academic language. Be respectful and professional. Clearly state your purpose. Include relevant course information. Be concise but thorough. Show that you\'ve done your research.',
+    example: 'Dear Professor Smith,\n\nI am a student in your Introduction to Psychology (PSY 101) class, Section 3.\n\nI have a question regarding the assignment due on Friday. Could you clarify the required format for citations?\n\nThank you for your time and assistance.\n\nSincerely,\n[Your name]\n[Student ID]'
+  }
+];
+
 export default function VoicesPage() {
   const [voices, setVoices] = useState([]);
   const [newName, setNewName] = useState("");
@@ -46,6 +92,17 @@ export default function VoicesPage() {
   useEffect(() => {
     if (userId) fetchVoices();
   }, [userId]);
+  
+  function applyTemplate(templateId) {
+    const template = voiceTemplates.find(t => t.id === templateId);
+    if (template) {
+      setNewName(template.name);
+      setNewDescription(template.description);
+      setNewInstructions(template.instructions);
+      setNewExample(template.example);
+      setSelectedTemplate(templateId);
+    }
+  }
 
   async function fetchVoices() {
     try {
@@ -60,55 +117,6 @@ export default function VoicesPage() {
   }
 
   // Predefined voice templates
-  const voiceTemplates = [
-    {
-      id: "professional",
-      name: "Professional",
-      description: "Formal and precise business communication",
-      instructions: "Write in a formal, professional voice. Use industry-specific terminology appropriately. Be clear, concise, and direct. Avoid casual language, slang, or humor. Maintain a respectful and somewhat formal distance. Structure the email with clear paragraphs and precise language.",
-      example: "I'm writing to follow up on our discussion regarding the Q3 marketing strategy. Based on our analysis, I believe we should reallocate resources to digital channels where we're seeing higher engagement rates."
-    },
-    {
-      id: "friendly",
-      name: "Friendly",
-      description: "Warm and personable communication",
-      instructions: "Write in a warm, friendly, and approachable voice. Use conversational language while remaining professional. Include some personal touches or warm greetings where appropriate. Be positive and encouraging. Use contractions and occasional informal phrases to sound natural and approachable.",
-      example: "Hope you're doing well! I wanted to check in about the project timeline we discussed last week. I've been making good progress on my end and was wondering how things are going with your part."
-    },
-    {
-      id: "persuasive",
-      name: "Persuasive",
-      description: "Compelling and convincing communication",
-      instructions: "Write in a persuasive and compelling manner. Use confident language and strong arguments. Present facts and evidence to support your points. Create a sense of urgency when appropriate. Use rhetorical questions and storytelling techniques to engage the reader. End with a clear call to action.",
-      example: "Did you know that 73% of customers abandon their shopping carts due to poor website experience? Our solution has helped similar businesses increase conversions by 45% in just three months. Let's schedule a demo to show you how we can transform your online sales."
-    },
-    {
-      id: "academic",
-      name: "Academic",
-      description: "Scholarly and research-oriented communication",
-      instructions: "Write in a scholarly, analytical voice suitable for academic contexts. Use field-appropriate terminology and references. Structure arguments logically with evidence-based reasoning. Maintain an objective, balanced perspective. Use passive voice where appropriate for academic distance. Cite sources or concepts when relevant.",
-      example: "My analysis of the primary texts reveals a recurring theme of displacement that appears to contradict Smith's (2018) interpretation. This finding may contribute to the ongoing scholarly debate regarding the author's intended social commentary."
-    },
-    {
-      id: "casual",
-      name: "Casual",
-      description: "Relaxed and conversational communication",
-      instructions: "Write in a relaxed, conversational style like you're talking to a friend or close colleague. Use contractions, simpler sentence structures, and everyday language. Include some personality and humor where appropriate. Be direct and get to the point quickly, while still maintaining a light voice. Use active voice and first-person pronouns.",
-      example: "Hey there! Just wanted to give you a quick update on the project. Things are moving along nicely, and I think we'll definitely hit our deadline. Let me know if you need anything from my end!"
-    }
-  ];
-
-  // Apply selected template to form
-  const applyTemplate = (templateId) => {
-    const template = voiceTemplates.find(t => t.id === templateId);
-    if (template) {
-      setNewName(template.name);
-      setNewInstructions(template.instructions);
-      setNewExample(template.example);
-      setNewDescription(template.description);
-      setSelectedTemplate(templateId);
-    }
-  };
 
   // Create a new voice
   async function handleCreate(e) {
@@ -220,6 +228,7 @@ export default function VoicesPage() {
             </Button>
           </div>
         </div>
+        
 
         {/* Onboarding Wizard */}
         {showOnboarding && (
@@ -258,7 +267,27 @@ export default function VoicesPage() {
           )}
           
           <div className="mb-6">
-            <h3 className="text-md font-medium text-surface-800 dark:text-surface-300 mb-2">Start with a template</h3>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-md font-medium text-surface-800 dark:text-surface-300">Start with a template (optional)</h3>
+              {selectedTemplate && (
+                <Button
+                  onClick={() => {
+                    setNewName('');
+                    setNewDescription('');
+                    setNewInstructions('');
+                    setNewExample('');
+                    setSelectedTemplate('');
+                  }}
+                  variant="outline"
+                  size="xs"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+            <p className="text-sm text-surface-600 dark:text-surface-400 mb-3">
+              💡 Create different voices for different purposes (e.g., "Thank You Emails", "Client Updates", "Professor Messages")
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-4">
               {voiceTemplates.map(template => (
                 <div 
