@@ -64,6 +64,41 @@ export default function VoiceCalibration({ voice, onComplete }) {
     }
   };
 
+  const handleDetailedFeedback = async () => {
+    if (!currentEmail) {
+      alert('Please generate an email first');
+      return;
+    }
+    
+    if (!feedback.trim()) {
+      alert('Please enter some feedback');
+      return;
+    }
+    
+    const feedbackItem = {
+      type: 'detailed',
+      label: 'Detailed feedback',
+      email: currentEmail,
+      detailedFeedback: feedback,
+      timestamp: new Date().toISOString()
+    };
+
+    try {
+      const voiceRef = doc(db, 'voices', voice.id);
+      await updateDoc(voiceRef, {
+        feedbackMemory: arrayUnion(feedbackItem),
+        trainingLevel: calculateTrainingLevel(voice.feedbackMemory?.length || 0)
+      });
+      
+      // Clear the feedback and show success
+      setFeedback('');
+      alert('Detailed feedback saved! Thank you for helping train your voice.');
+    } catch (error) {
+      console.error('Error saving detailed feedback:', error);
+      alert('Error saving feedback. Please try again.');
+    }
+  };
+
   const calculateTrainingLevel = (feedbackCount) => {
     if (feedbackCount >= 20) return 'expert';
     if (feedbackCount >= 10) return 'trained';
@@ -227,6 +262,16 @@ export default function VoiceCalibration({ voice, onComplete }) {
           value={feedback}
           onChange={(e) => setFeedback(e.target.value)}
         />
+        {feedback && (
+          <Button
+            onClick={() => handleDetailedFeedback()}
+            variant="primary"
+            size="sm"
+            className="mt-3"
+          >
+            Submit Feedback
+          </Button>
+        )}
       </div>
 
       {/* Navigation */}

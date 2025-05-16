@@ -79,21 +79,55 @@ export default async function handler(req, res) {
     let voiceData = null;
     
     if (voiceId) {
-      const voiceDoc = await getDoc(doc(db, "voices", voiceId));
-      if (voiceDoc.exists()) {
-        voiceData = voiceDoc.data();
-        voiceInstructions = voiceData.instructions || voiceInstructions;
-        feedbackHistory = voiceData.feedbackMemory || [];
+      try {
+        const voiceDoc = await getDoc(doc(db, "voices", voiceId));
+        if (voiceDoc.exists()) {
+          voiceData = voiceDoc.data();
+          voiceInstructions = voiceData.instructions || voiceInstructions;
+          feedbackHistory = voiceData.feedbackMemory || [];
+          
+          // Ensure feedbackHistory is an array
+          if (!Array.isArray(feedbackHistory)) {
+            console.warn("feedbackMemory is not an array, resetting to empty array");
+            feedbackHistory = [];
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching voice data:", error);
       }
     }
 
     // Format feedback history for the prompt
     let feedbackSection = "";
     if (feedbackHistory.length > 0) {
-      feedbackSection = `
-Important feedback to remember:
-${feedbackHistory.map(f => `- "${f.feedback}"`).join('\n')}
+      try {
+        const formattedFeedback = feedbackHistory.map(f => {
+          // Handle different feedback structures
+          if (!f || typeof f !== 'object') {
+            console.warn("Invalid feedback item:", f);
+            return null;
+          }
+          
+          if (f.type === 'detailed' && f.detailedFeedback) {
+            return `- ${f.detailedFeedback}`;
+          } else if (f.label) {
+            return `- ${f.label}: User indicated this about the email`;
+          }
+          return null;
+        }).filter(Boolean);
+        
+        if (formattedFeedback.length > 0) {
+          feedbackSection = `
+Important feedback to remember from past emails:
+${formattedFeedback.join('\n')}
+
+Apply this feedback: adjust tone, style, vocabulary, and structure based on what the user has indicated.
 `;
+        }
+      } catch (error) {
+        console.error("Error formatting feedback:", error);
+        console.error("feedbackHistory:", feedbackHistory);
+      }
     }
     
     // Extract patterns from sample emails
@@ -219,33 +253,40 @@ Writing to a FRIEND:
       recipientInstructions = recipientGuidelines[recipientDetection.type] || '';
     }
 
-    const prompt = `
-You are writing an email as ${fullName}. Your goal is to sound exactly like a human, not an AI.
+    let samplesSection = "";
+    if (voiceData?.sampleEmails?.length > 0) {
+      try {
+        samplesSection = `CRITICAL INSTRUCTION: The user has provided sample emails that show EXACTLY how they write. You MUST mimic their style PRECISELY. Their emails are:
+${voiceData.sampleEmails.map((email, i) => `
+Sample ${i + 1}: "${email}"
+`).join('\n')}
 
-CRITICAL: Make this email INDISTINGUISHABLE from human writing by:
-1. Varying sentence lengths (mix short and long)
-2. Using natural, conversational language
-3. Including personal touches and natural transitions
-4. Avoiding overly perfect grammar - write how people actually write
-5. Using contractions naturally (I'm, don't, can't)
-6. Starting sentences with conjunctions sometimes (But, And, So)
-7. Using fragments when natural
-8. Avoiding AI patterns like numbered lists, excessive politeness, or over-explaining
+If their samples are extremely casual/brief (like "hi whats up"), you MUST write just as casually and briefly. Do NOT add formality, politeness, or structure they don't use.`;
+      } catch (error) {
+        console.error("Error formatting sample emails:", error);
+      }
+    }
+    
+    const prompt = `
+You are writing an email as ${fullName}. 
+
+${samplesSection}
+
+${writingPatterns}
+
+Your goal is to sound exactly like the samples provided, NOT like a typical professional email.
 
 ${voiceInstructions}
 ${humanInstructions}
 ${varietyInstructions}
-${writingPatterns}
 ${contextInstructions}
 ${recipientInstructions}
 
 Context for this email: "${topic}"
 
-Previously approved emails in this style:
-${examples}
 ${feedbackSection}
 
-Write the email now. Sound like a real person, not an AI assistant.
+Write the email now. Match the exact style and brevity of the samples provided.
 `;
 
     // If no OpenAI API key is configured, use mock data for development

@@ -44,6 +44,10 @@ export default function Home() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [hasVoices, setHasVoices] = useState(false);
   const hasCheckedOnboarding = useRef(false);
+  
+  // Inline editing states
+  const [editMode, setEditMode] = useState(false);
+  const [editedResponse, setEditedResponse] = useState("");
 
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (user) => {
@@ -210,10 +214,71 @@ export default function Home() {
 
       if (autoCopy) copyToClipboard(data.result);
       if (autoGmail) openInGmail(data.result);
+      
+      // Initialize edited response for edit mode
+      setEditedResponse(data.result);
     } catch (err) {
       setError("Error generating email: " + err.message);
     } finally {
       setIsGenerating(false);
+    }
+  }
+  
+  async function handleQuickRevision(feedback) {
+    try {
+      setIsGenerating(true);
+      setError("");
+      
+      const res = await fetch("/api/revise", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          originalEmail: editedResponse,
+          feedback,
+          userId,
+          voiceId: selectedVoice?.id
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to revise email");
+      }
+      
+      setEditedResponse(data.result);
+    } catch (err) {
+      setError("Error revising email: " + err.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+  
+  async function handleSaveRevision() {
+    try {
+      setResponse(editedResponse);
+      setEditMode(false);
+      
+      // Save to database if auto-save is enabled
+      if (autoSave) {
+        await addDoc(collection(db, "emails"), {
+          userId,
+          voiceId: selectedVoice.id,
+          originalTopic: topic,
+          generatedEmail: editedResponse,
+          feedbackText: "",
+          revision: editedResponse,
+          approved: false,
+          editedAt: new Date().toISOString(),
+          isRevision: true
+        });
+        fetchEmails();
+      }
+      
+      // Copy to clipboard if auto-copy is enabled
+      if (autoCopy) copyToClipboard(editedResponse);
+    } catch (err) {
+      setError("Error saving revision: " + err.message);
     }
   }
 
@@ -564,48 +629,130 @@ export default function Home() {
 
           {response && (
             <div className="mt-8 border-t border-surface-200 dark:border-surface-700 pt-6">
-              <h3 className="text-lg font-medium text-surface-900 dark:text-surface-200 mb-3">Generated Email</h3>
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-medium text-surface-900 dark:text-surface-200">Generated Email</h3>
+                {!editMode && (
+                  <Button
+                    onClick={() => setEditMode(true)}
+                    variant="outline"
+                    size="sm"
+                    icon={<span>✏️</span>}
+                  >
+                    Edit
+                  </Button>
+                )}
+              </div>
               
-              {autoSave ? (
+              {autoSave && !editMode && (
                 <div className="mb-4">
                   <div className="p-2 bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800 rounded-md text-xs text-success-700 dark:text-success-400">
                     This email has been automatically saved. You can find it in your saved emails below.
                   </div>
                 </div>
-              ) : (
-                <>
+              )}
+              
+              {editMode ? (
+                <div className="space-y-4">
                   <TextArea
-                    rows={8}
-                    value={response}
-                    onChange={(e) => setResponse(e.target.value)}
+                    rows={10}
+                    value={editedResponse}
+                    onChange={(e) => setEditedResponse(e.target.value)}
+                    className="font-mono"
                   />
-                  <div className="mt-4 flex space-x-3">
+                  
+                  {/* Quick feedback buttons */}
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-surface-600 dark:text-surface-400">Quick adjustments:</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        onClick={() => handleQuickRevision('too formal')}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Too formal 🎩
+                      </Button>
+                      <Button
+                        onClick={() => handleQuickRevision('too casual')}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Too casual 😎
+                      </Button>
+                      <Button
+                        onClick={() => handleQuickRevision('make shorter')}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Make shorter ✂️
+                      </Button>
+                      <Button
+                        onClick={() => handleQuickRevision('add details')}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Add details 📝
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="flex space-x-3">
                     <Button 
-                      onClick={handleSave}
+                      onClick={handleSaveRevision}
                       variant="primary"
                     >
-                      Save Email
+                      Save Changes
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        setEditMode(false);
+                        setEditedResponse(response);
+                      }}
+                      variant="outline"
+                    >
+                      Cancel
                     </Button>
                   </div>
+                </div>
+              ) : (
+                <>
+                  {!autoSave && (
+                    <>
+                      <TextArea
+                        rows={8}
+                        value={response}
+                        onChange={(e) => setResponse(e.target.value)}
+                      />
+                      <div className="mt-4 flex space-x-3">
+                        <Button 
+                          onClick={handleSave}
+                          variant="primary"
+                        >
+                          Save Email
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
               
-              <div className="mt-4 flex space-x-3">
-                <Button
-                  onClick={() => copyToClipboard(response)}
-                  variant="outline"
-                  icon={<span>📋</span>}
-                >
-                  Copy
-                </Button>
-                <Button
-                  onClick={() => openInGmail(response)}
-                  variant="outline"
-                  icon={<span>📧</span>}
-                >
-                  Open in Gmail
-                </Button>
-              </div>
+              {!editMode && (
+                <div className="mt-4 flex space-x-3">
+                  <Button
+                    onClick={() => copyToClipboard(response)}
+                    variant="outline"
+                    icon={<span>📋</span>}
+                  >
+                    Copy
+                  </Button>
+                  <Button
+                    onClick={() => openInGmail(response)}
+                    variant="outline"
+                    icon={<span>📧</span>}
+                  >
+                    Open in Gmail
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </Card>

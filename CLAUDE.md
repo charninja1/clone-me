@@ -2,6 +2,48 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## CRITICAL DESIGN PRINCIPLE: SIMPLICITY FIRST
+
+**Our users want a SIMPLE, EASY-TO-USE tool, not a complicated application.**
+
+### Core Design Philosophy
+- **Less is More**: Every feature must justify its existence
+- **Minimal Clicks**: Users should achieve their goals with minimal interaction
+- **Clear Purpose**: Each button/option should have an obvious function
+- **No Feature Creep**: Resist adding "nice to have" features that complicate the experience
+- **Progressive Disclosure**: Show advanced features only when needed
+
+### UI/UX Guidelines
+1. **Clean Interface**
+   - Maximum 3-4 options visible at once
+   - Use icons + text for clarity
+   - Plenty of whitespace
+   - No nested menus or complex hierarchies
+
+2. **Smart Defaults**
+   - Everything should work out-of-the-box
+   - Advanced settings hidden by default
+   - Common use cases prioritized
+
+3. **One-Click Actions**
+   - Generate email → One button
+   - Copy → One click
+   - Edit → One click
+   - Save → Automatic or one click
+
+4. **No Overwhelming Options**
+   - Limit quick actions to 4-5 max
+   - Group related features
+   - Hide rarely used features
+   - Avoid technical jargon
+
+### Implementation Principles
+- **Start Simple**: Launch with minimal viable features
+- **User Testing**: Let user feedback drive additions
+- **Remove Friction**: Every extra step is a potential user drop-off
+- **Mobile-First**: Must work perfectly on phones
+- **Fast**: Every action should feel instant
+
 ## Commands
 
 ### Development
@@ -153,6 +195,42 @@ CloneMe AI for Emails enables users to generate emails in their own voice, acros
    - All personal voice data stays user-owned and secure.
    - Option to delete data and voice memory fully at any time.
 
+### Simplicity Examples in Our App
+
+1. **Email Generation**
+   - One text box for input
+   - One button to generate
+   - Automatic voice selection (uses default)
+   - No complex forms or options
+
+2. **Voice Training**
+   - Simple personality quiz (not technical)
+   - Quick feedback buttons (not detailed forms)
+   - Visual progress indicators
+   - Auto-saves everything
+
+3. **Settings**
+   - Only 3 toggles (auto-save, auto-copy, auto-Gmail)
+   - Set once and forget
+   - No complex configuration
+
+4. **Revision System**
+   - One "Edit" button
+   - Only 4 quick adjustment options
+   - Simple save/cancel
+   - No complex versioning UI (handled in background)
+
+### How to Evaluate New Features
+
+Before adding ANY new feature, ask:
+1. Can 80% of users understand it in 5 seconds?
+2. Does it require documentation to use?
+3. Can it be done in 1-2 clicks?
+4. Will it confuse new users?
+5. Is there a simpler way?
+
+If any answer is "no" or "yes" (for #2 and #4), reconsider the implementation.
+
 ### Current Implementation Status
 
 #### ✅ Completed Features
@@ -187,44 +265,65 @@ CloneMe AI for Emails enables users to generate emails in their own voice, acros
 #### 🚧 Partially Completed
 
 - Email revision API with human-like output (implemented but using mock data when no API key)
-- Auto-save system (works for generation, needs extension for revisions)
+- Auto-save system (works for generation and revisions)
 - Voice export/duplication (backend ready, needs UI)
+- ✅ Inline revision UI (COMPLETED - simple edit mode with quick actions)
 
 #### ❌ Not Yet Implemented
 
-- Inline revision UI (backend ready, needs frontend)
-- Email versioning system
-- Auto-copy to clipboard setting
-- Auto-open Gmail integration
-- Voice export/import UI
-- Additional email types (Thank You, Request, Follow-Up)
+- Email versioning system (keep simple - just a history list)
+- Voice export/import UI (simple download/upload buttons)
+- Additional email types (keep to 3-4 max types)
 
-### High Priority TODOs
+### IMPORTANT: Simplicity Reminders
 
-1. **Complete Inline Revision UI**:
-   - Build frontend for inline email editing
-   - Add quick feedback buttons ("Too formal", "Too casual", etc.)
-   - Connect to existing revision API
+⚠️ **What NOT to Add:**
+- Complex version control UI
+- Detailed analytics dashboards  
+- Multiple editing modes
+- Nested settings menus
+- Technical configuration options
+- Feature-rich text editors
+- Complicated workflows
 
-2. **Email Versioning & History**:
-   - Implement version control for emails
-   - Add revision history view
-   - Extend auto-save to work with revisions
+✅ **What TO Add:**
+- One-click actions
+- Visual feedback
+- Smart defaults
+- Automatic saves
+- Simple toggles
+- Clear labels
+- Minimal options
 
-3. **Additional User Settings**:
-   - Auto-copy to clipboard toggle
-   - Auto-open Gmail with email body
-   - Email format preferences
+### High Priority TODOs (With Simplicity in Mind)
 
-4. **Voice Management Enhancements**:
-   - Voice export/import UI
-   - Voice duplication feature
-   - Voice templates marketplace
+1. ✅ **COMPLETED: Inline Revision UI**:
+   - Simple edit button and mode
+   - Only 4 quick feedback options
+   - Clean save/cancel flow
 
-5. **Email Type Templates**:
-   - Add email type selection (Thank You, Request, Follow-Up)
-   - Type-specific generation prompts
-   - Template customization per voice
+2. **Email Versioning & History** (Keep Simple):
+   - Just show a simple list of previous versions
+   - One-click to view old version
+   - One-click to restore
+   - NO complex diff views or merge options
+
+3. **Complete User Settings**:
+   - Just add the 2 missing toggles (already have auto-save)
+   - Simple on/off switches
+   - Settings save automatically
+
+4. **Voice Export/Import** (Dead Simple):
+   - One button: "Download Voice"
+   - One button: "Upload Voice" 
+   - No complex file management
+   - No marketplace (too complex)
+
+5. **Email Type Selection** (Maximum Simplicity):
+   - Just 3 types: Professional, Casual, Thank You
+   - Simple dropdown menu
+   - Auto-detected from topic when possible
+   - No custom templates (too complex)
 
 ### Technical Architecture Updates
 

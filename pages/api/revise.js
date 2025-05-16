@@ -121,10 +121,21 @@ Vary your language naturally - don't use the same patterns repeatedly.
     // Format feedback history for the prompt
     let feedbackSection = "";
     if (feedbackHistory.length > 0) {
-      feedbackSection = `
-IMPORTANT: Remember to apply these past learnings:
-${feedbackHistory.map(f => `- "${f.feedback}"`).join('\n')}
+      const formattedFeedback = feedbackHistory.map(f => {
+        if (f.type === 'detailed' && f.detailedFeedback) {
+          return `- ${f.detailedFeedback}`;
+        } else if (f.label) {
+          return `- ${f.label}: User indicated this about the email`;
+        }
+        return null;
+      }).filter(Boolean);
+      
+      if (formattedFeedback.length > 0) {
+        feedbackSection = `
+IMPORTANT: Remember to apply these past learnings from the user's feedback:
+${formattedFeedback.join('\n')}
 `;
+      }
     }
 
     const prompt = `
