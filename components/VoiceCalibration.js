@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Card, Badge, TextArea } from './ui';
 import { db } from '../lib/firebase';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
@@ -9,6 +9,7 @@ export default function VoiceCalibration({ voice, onComplete }) {
   const [highlights, setHighlights] = useState([]);
   const [calibrationStep, setCalibrationStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasGeneratedEmail, setHasGeneratedEmail] = useState(false);
 
   // Quick feedback options
   const quickFeedback = [
@@ -23,6 +24,11 @@ export default function VoiceCalibration({ voice, onComplete }) {
   ];
 
   const handleQuickFeedback = async (feedbackType) => {
+    if (!currentEmail) {
+      alert('Please generate an email first');
+      return;
+    }
+    
     const feedbackItem = {
       type: feedbackType.id,
       label: feedbackType.label,
@@ -37,8 +43,22 @@ export default function VoiceCalibration({ voice, onComplete }) {
         trainingLevel: calculateTrainingLevel(voice.feedbackMemory?.length || 0)
       });
       
-      // Move to next calibration step
-      setCalibrationStep(prev => prev + 1);
+      // Show success feedback
+      alert('Feedback saved! ' + feedbackType.label);
+      
+      // If it's positive feedback, automatically move to next step
+      if (feedbackType.id === 'perfect_tone' || feedbackType.id === 'almost_there') {
+        setTimeout(() => {
+          if (calibrationStep < testScenarios.length - 1) {
+            setCalibrationStep(prev => prev + 1);
+            setCurrentEmail('');
+            setFeedback('');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          } else {
+            onComplete();
+          }
+        }, 1000);
+      }
     } catch (error) {
       console.error('Error saving feedback:', error);
     }
@@ -79,9 +99,50 @@ export default function VoiceCalibration({ voice, onComplete }) {
   ];
 
   const currentScenario = testScenarios[calibrationStep % testScenarios.length];
+  
+  // Generate sample email
+  const generateSample = async () => {
+    setIsLoading(true);
+    setHasGeneratedEmail(false);
+    
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: currentScenario.prompt,
+          voiceId: voice.id,
+          examples: JSON.stringify(voice.sampleEmails || [])
+        })
+      });
+      
+      const data = await response.json();
+      setCurrentEmail(data.result || 'Error generating email');
+      setHasGeneratedEmail(true);
+      
+      // Scroll to top to show the generated email
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      // Also scroll the component into view
+      const element = document.getElementById('calibration-container');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    } catch (error) {
+      console.error('Error generating sample:', error);
+      setCurrentEmail('Error generating email. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Auto-generate on scenario change
+  useEffect(() => {
+    generateSample();
+  }, [calibrationStep]);
 
   return (
-    <div className="space-y-6">
+    <div id="calibration-container" className="space-y-6">
       {/* Progress */}
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-semibold">Calibrating: {voice.name}</h3>
@@ -92,40 +153,50 @@ export default function VoiceCalibration({ voice, onComplete }) {
 
       {/* Current scenario */}
       <Card className="p-6 bg-surface-50 dark:bg-surface-800">
-        <h4 className="font-medium mb-2">{currentScenario.title}</h4>
-        <p className="text-surface-600 dark:text-surface-400">
-          {currentScenario.prompt}
-        </p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h4 className="font-medium mb-2">{currentScenario.title}</h4>
+            <p className="text-surface-600 dark:text-surface-400">
+              {currentScenario.prompt}
+            </p>
+          </div>
+          <Button
+            onClick={generateSample}
+            disabled={isLoading}
+            isLoading={isLoading}
+            size="sm"
+            variant="secondary"
+          >
+            {isLoading ? 'Generating...' : (hasGeneratedEmail ? 'Regenerate' : 'Generate')}
+          </Button>
+        </div>
       </Card>
 
       {/* Generated email */}
-      <Card className="p-6">
-        <div className="flex justify-between items-start mb-4">
-          <h4 className="font-medium">Generated Email</h4>
-          <Button
-            variant="outline"
-            size="xs"
-            onClick={() => {
-              // Generate new version
-              setIsLoading(true);
-              // Simulate generation
-              setTimeout(() => {
-                setCurrentEmail(`Sample email for ${currentScenario.id}`);
-                setIsLoading(false);
-              }, 1000);
-            }}
-            isLoading={isLoading}
-          >
-            Regenerate
-          </Button>
-        </div>
-        
-        <div className="prose dark:prose-invert">
-          <p className="whitespace-pre-wrap">
-            {currentEmail || 'Click regenerate to create a sample email...'}
-          </p>
-        </div>
-      </Card>
+      {isLoading ? (
+        <Card className="p-6">
+          <div className="flex flex-col items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mb-4"></div>
+            <p className="text-surface-600 dark:text-surface-400">Generating email...</p>
+          </div>
+        </Card>
+      ) : currentEmail ? (
+        <Card className="p-6 animate-fadeIn">
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="font-medium">Generated Email</h4>
+            {hasGeneratedEmail && (
+              <Badge variant="success" className="animate-pulse">
+                New Email Generated!
+              </Badge>
+            )}
+          </div>
+          <div className="prose dark:prose-invert max-w-none">
+            <pre className="whitespace-pre-wrap text-surface-700 dark:text-surface-300 bg-surface-50 dark:bg-surface-800 p-4 rounded">
+              {currentEmail}
+            </pre>
+          </div>
+        </Card>
+      ) : null}
 
       {/* Quick feedback buttons */}
       <div>
@@ -179,12 +250,16 @@ export default function VoiceCalibration({ voice, onComplete }) {
             onClick={() => {
               if (calibrationStep < testScenarios.length - 1) {
                 setCalibrationStep(prev => prev + 1);
+                setCurrentEmail('');
+                setFeedback('');
+                // Scroll to top when moving to next step
+                window.scrollTo({ top: 0, behavior: 'smooth' });
               } else {
                 onComplete();
               }
             }}
           >
-            {calibrationStep < testScenarios.length - 1 ? 'Next' : 'Complete'}
+            {calibrationStep < testScenarios.length - 1 ? 'Next Scenario' : 'Complete Training'}
           </Button>
         </div>
       </div>

@@ -2,9 +2,14 @@ import { db } from "../../lib/firebase";
 import { getDoc, doc } from "firebase/firestore";
 import { analyzeEmailPatterns, generateStyleInstructions } from "../../lib/emailPatterns";
 import { generateVarietyPatterns } from "../../lib/personalityVarieties";
+import { detectEmailType, detectRecipient, EMAIL_TYPES, RECIPIENT_TYPES } from "../../lib/contextDetection";
 
 export default async function handler(req, res) {
   const { topic, userId, voiceId, examples = "[None yet]" } = req.body;
+  
+  // Detect context from topic
+  const emailTypeDetection = detectEmailType(topic);
+  const recipientDetection = detectRecipient(topic);
 
   // Helper function to generate human-like instructions
   function generateHumanInstructions(personality) {
@@ -128,6 +133,91 @@ Use these natural variations to sound human:
 
 Randomly vary your language patterns - don't always use the same phrases.
 `;
+    
+    // Add context-specific instructions based on detected email type
+    let contextInstructions = '';
+    
+    if (emailTypeDetection.confidence > 0.5) {
+      const contextGuidelines = {
+        [EMAIL_TYPES.THANK_YOU]: `
+This is a THANK YOU email. Key elements:
+- Express genuine gratitude for specific actions/things
+- Be specific about what you're thankful for
+- Consider offering to reciprocate or help in return
+- Keep it warm and sincere`,
+        
+        [EMAIL_TYPES.REQUEST]: `
+This is a REQUEST email. Key elements:
+- State your request clearly in the first paragraph
+- Explain why you need this (provide context)
+- Be respectful of their time
+- Include a specific deadline if applicable
+- Express appreciation in advance`,
+        
+        [EMAIL_TYPES.FOLLOW_UP]: `
+This is a FOLLOW-UP email. Key elements:
+- Reference the previous interaction clearly
+- Provide a brief reminder of context
+- State the purpose of following up
+- Include next steps or actions needed
+- Be politely persistent`,
+        
+        [EMAIL_TYPES.APOLOGY]: `
+This is an APOLOGY email. Key elements:
+- Accept responsibility clearly
+- Express genuine regret
+- Acknowledge the impact on the recipient
+- Explain how you'll prevent it from happening again
+- Don't make excuses`,
+        
+        [EMAIL_TYPES.INTRODUCTION]: `
+This is an INTRODUCTION email. Key elements:
+- Briefly introduce yourself and your background
+- Explain why you're reaching out
+- Mention any mutual connections
+- State what you're hoping to achieve
+- Include a clear call-to-action`
+      };
+      
+      contextInstructions = contextGuidelines[emailTypeDetection.type] || '';
+    }
+    
+    // Add recipient-specific adjustments
+    let recipientInstructions = '';
+    
+    if (recipientDetection.confidence > 0.5) {
+      const recipientGuidelines = {
+        [RECIPIENT_TYPES.PROFESSOR]: `
+Writing to a PROFESSOR:
+- Use formal salutation (Dear Professor [Name])
+- Be concise and respect their time
+- Maintain academic professionalism
+- Reference course/class if relevant`,
+        
+        [RECIPIENT_TYPES.BOSS]: `
+Writing to your BOSS:
+- Maintain professional tone
+- Be clear about work-related matters
+- Show respect for hierarchy
+- Focus on business value and outcomes`,
+        
+        [RECIPIENT_TYPES.CLIENT]: `
+Writing to a CLIENT:
+- Focus on their needs and benefits
+- Maintain professionalism with warmth
+- Be clear about deliverables
+- Show appreciation for their business`,
+        
+        [RECIPIENT_TYPES.FRIEND]: `
+Writing to a FRIEND:
+- Use casual, conversational tone
+- Include personal references
+- Be yourself - show personality
+- Use inside jokes or shared experiences if relevant`
+      };
+      
+      recipientInstructions = recipientGuidelines[recipientDetection.type] || '';
+    }
 
     const prompt = `
 You are writing an email as ${fullName}. Your goal is to sound exactly like a human, not an AI.
@@ -146,6 +236,8 @@ ${voiceInstructions}
 ${humanInstructions}
 ${varietyInstructions}
 ${writingPatterns}
+${contextInstructions}
+${recipientInstructions}
 
 Context for this email: "${topic}"
 

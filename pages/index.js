@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db, auth } from "../lib/firebase";
 import {
   collection,
@@ -15,6 +15,11 @@ import {
 import { onAuthStateChanged } from "firebase/auth";
 import { Layout, Card, Button, Select, TextArea, AlertBanner, Badge, EmailDisplay } from "../components";
 import { useRouter } from 'next/router';
+import ContextDetector from "../components/ContextDetector";
+import SimpleOnboarding from "../components/SimpleOnboarding";
+import SimpleDashboard from "../components/SimpleDashboard";
+import InteractiveTutorial from "../components/InteractiveTutorial";
+import HelpTooltip from "../components/HelpTooltip";
 
 export default function Home() {
   const [topic, setTopic] = useState("");
@@ -34,6 +39,11 @@ export default function Home() {
   const [autoSave, setAutoSave] = useState(false);
   const [autoCopy, setAutoCopy] = useState(false);
   const [autoGmail, setAutoGmail] = useState(false);
+  
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [hasVoices, setHasVoices] = useState(false);
+  const hasCheckedOnboarding = useRef(false);
 
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (user) => {
@@ -44,6 +54,31 @@ export default function Home() {
     });
     return () => unsubAuth();
   }, []);
+  
+  // Check if user needs onboarding (only once per session)
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      if (userId && !hasCheckedOnboarding.current) {
+        hasCheckedOnboarding.current = true;
+        
+        const userDoc = await getDoc(doc(db, "users", userId));
+        const userData = userDoc.exists() ? userDoc.data() : {};
+        
+        if (!userData.hasCompletedOnboarding) {
+          setShowOnboarding(true);
+        } else if (!userData.hasSeenTutorial && voices.length > 0) {
+          setShowTutorial(true);
+        }
+      }
+    };
+    
+    checkOnboarding();
+  }, [userId, voices]);
+  
+  // Update hasVoices when voices change
+  useEffect(() => {
+    setHasVoices(voices.length > 0);
+  }, [voices]);
 
   async function initUser(uid) {
     await fetchVoices(uid);
@@ -369,16 +404,76 @@ export default function Home() {
 
   return (
     <Layout>
-      {/* Hero Section */}
-      <div className="relative overflow-hidden mb-12">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-600/20 to-secondary-600/20 dark:from-primary-600/10 dark:to-secondary-600/10" />
-        <div className="relative max-w-4xl mx-auto py-16 px-6">
-          <h1 className="text-4xl md:text-5xl font-bold text-primary-700 dark:text-primary-300 mb-4">Generate Perfect Emails</h1>
-          <p className="text-xl text-surface-600 dark:text-surface-400">Write emails in your unique voice with AI assistance</p>
-        </div>
-      </div>
+      {/* Onboarding Modal */}
+      {showOnboarding && (
+        <SimpleOnboarding
+          onComplete={async () => {
+            setShowOnboarding(false);
+            // Mark onboarding as complete in the database
+            if (userId) {
+              await updateDoc(doc(db, "users", userId), {
+                hasCompletedOnboarding: true
+              });
+            }
+            // Only redirect to voices if user has no voices
+            if (voices.length === 0) {
+              window.location.href = '/voices';
+            }
+          }}
+        />
+      )}
       
-      <div className="max-w-4xl mx-auto px-4">
+      {/* Tutorial */}
+      {showTutorial && (
+        <InteractiveTutorial
+          steps={[
+            {
+              target: '#voice-select',
+              title: 'Choose Your Voice',
+              content: 'Select which voice you want to use for this email',
+              position: 'bottom'
+            },
+            {
+              target: '#topic',
+              title: 'Tell Me What to Say',
+              content: 'Just type what you want your email to be about',
+              position: 'top'
+            },
+            {
+              target: '#generate-button',
+              title: 'Generate Your Email',
+              content: 'Click here and I\'ll write the email for you!',
+              position: 'top'
+            }
+          ]}
+          onComplete={async () => {
+            setShowTutorial(false);
+            if (userId) {
+              await updateDoc(doc(db, "users", userId), {
+                hasSeenTutorial: true
+              });
+            }
+          }}
+          onSkip={() => setShowTutorial(false)}
+        />
+      )}
+      
+      {/* Show dashboard for returning users */}
+      {!hasVoices && userId && !showOnboarding ? (
+        <div className="max-w-6xl mx-auto px-4">
+          <SimpleDashboard userId={userId} />
+        </div>
+      ) : (
+        <>
+          {/* Simplified Hero Section */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold mb-2">Write Your Email</h1>
+            <p className="text-lg text-surface-600 dark:text-surface-400">
+              Tell me what you want to say, and I'll write it for you
+            </p>
+          </div>
+          
+          <div className="max-w-4xl mx-auto px-4">
 
         {/* Generation form */}
         <Card className="mb-12 shadow-lg" variant="gradient" hover={false}>
@@ -438,6 +533,20 @@ export default function Home() {
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               required
+            />
+            
+            {/* Smart Context Detection */}
+            <ContextDetector
+              topic={topic}
+              voices={voices}
+              onVoiceSelect={(voiceId) => {
+                const voice = voices.find(v => v.id === voiceId);
+                if (voice) {
+                  setSelectedVoice(voice);
+                  setFilterVoiceId(voiceId);
+                }
+              }}
+              selectedVoiceId={selectedVoice?.id}
             />
 
             <div>
@@ -626,7 +735,9 @@ export default function Home() {
             </div>
           )}
         </div>
-      </div>
+        </div>
+        </>
+      )}
     </Layout>
   );
 }

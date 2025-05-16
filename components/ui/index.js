@@ -7,3 +7,5 @@ export { default as EmailDisplay } from './EmailDisplay';
 export { default as Input } from './Input';
 export { default as Select } from './Select';
 export { default as TextArea } from './TextArea';
+export { default as InfoCard } from './InfoCard';
+export { default as Tooltip } from './Tooltip';
