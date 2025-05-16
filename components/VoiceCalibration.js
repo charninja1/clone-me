@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button, Card, Badge, TextArea } from './ui';
 import { db } from '../lib/firebase';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
@@ -6,7 +6,7 @@ import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 export default function VoiceCalibration({ voice, onComplete }) {
   const [currentEmail, setCurrentEmail] = useState('');
   const [feedback, setFeedback] = useState('');
-  const [highlights, setHighlights] = useState([]);
+  // const [highlights, setHighlights] = useState([]);
   const [calibrationStep, setCalibrationStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [hasGeneratedEmail, setHasGeneratedEmail] = useState(false);
@@ -106,9 +106,9 @@ export default function VoiceCalibration({ voice, onComplete }) {
     return 'beginner';
   };
 
-  const handleHighlight = (text, start, end) => {
-    setHighlights(prev => [...prev, { text, start, end, type: 'needs_improvement' }]);
-  };
+  // const handleHighlight = (text, start, end) => {
+  //   setHighlights(prev => [...prev, { text, start, end, type: 'needs_improvement' }]);
+  // };
 
   const testScenarios = [
     {
@@ -136,7 +136,7 @@ export default function VoiceCalibration({ voice, onComplete }) {
   const currentScenario = testScenarios[calibrationStep % testScenarios.length];
   
   // Generate sample email
-  const generateSample = async () => {
+  const generateSample = useCallback(async () => {
     setIsLoading(true);
     setHasGeneratedEmail(false);
     
@@ -169,11 +169,12 @@ export default function VoiceCalibration({ voice, onComplete }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [calibrationStep, currentScenario, voice.id, voice.name]);
   
   // Auto-generate on scenario change
   useEffect(() => {
     generateSample();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calibrationStep]);
 
   return (
@@ -313,7 +314,7 @@ export default function VoiceCalibration({ voice, onComplete }) {
       <Card className="p-4 bg-primary-50 dark:bg-primary-900/20">
         <p className="text-sm text-primary-800 dark:text-primary-200">
           💡 <strong>Tip:</strong> The more specific your feedback, the better the AI learns your style. 
-          Try highlighting phrases that don't sound like you and suggesting alternatives.
+          Try highlighting phrases that don&apos;t sound like you and suggesting alternatives.
         </p>
       </Card>
     </div>
