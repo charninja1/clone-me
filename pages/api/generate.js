@@ -30,6 +30,7 @@ export default async function handler(req, res) {
       instructions.push("Include personal touches and friendly asides");
       instructions.push("Use exclamation points naturally (but not excessively)");
       instructions.push("Add phrases like 'Hope you're doing well' but vary them");
+      instructions.push("Be warm through word choice, NOT emojis (unless user's samples include them)");
     }
     
     // Detail variations
@@ -91,6 +92,10 @@ export default async function handler(req, res) {
             console.warn("feedbackMemory is not an array, resetting to empty array");
             feedbackHistory = [];
           }
+          
+          // Get custom rules and coaching rules
+          const customRules = voiceData.customRules || [];
+          const coachingRules = voiceData.coachingRules || [];
         }
       } catch (error) {
         console.error("Error fetching voice data:", error);
@@ -254,17 +259,63 @@ Writing to a FRIEND:
     }
 
     let samplesSection = "";
+    let emojiInstructions = "\nIMPORTANT: Do NOT use emojis unless they appear in the user's sample emails. Most people do not use emojis in professional or casual emails.";
+    
     if (voiceData?.sampleEmails?.length > 0) {
       try {
+        // Check if any sample emails contain emojis
+        const emojiRegex = /[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
+        const userUsesEmojis = voiceData.sampleEmails.some(email => emojiRegex.test(email));
+        
+        if (userUsesEmojis) {
+          // Count emoji frequency in samples
+          const emojiCount = voiceData.sampleEmails.reduce((count, email) => {
+            const matches = email.match(emojiRegex) || [];
+            return count + matches.length;
+          }, 0);
+          const avgEmojisPerEmail = emojiCount / voiceData.sampleEmails.length;
+          
+          emojiInstructions = `\nThe user uses emojis in their emails (average: ${avgEmojisPerEmail.toFixed(1)} per email). Use emojis sparingly and naturally, matching their frequency and placement patterns.`;
+        }
+        
         samplesSection = `CRITICAL INSTRUCTION: The user has provided sample emails that show EXACTLY how they write. You MUST mimic their style PRECISELY. Their emails are:
 ${voiceData.sampleEmails.map((email, i) => `
 Sample ${i + 1}: "${email}"
 `).join('\n')}
 
-If their samples are extremely casual/brief (like "hi whats up"), you MUST write just as casually and briefly. Do NOT add formality, politeness, or structure they don't use.`;
+If their samples are extremely casual/brief (like "hi whats up"), you MUST write just as casually and briefly. Do NOT add formality, politeness, or structure they don't use.${emojiInstructions}`;
       } catch (error) {
         console.error("Error formatting sample emails:", error);
       }
+    } else {
+      // No samples provided, assume no emojis
+      samplesSection = emojiInstructions;
+    }
+    
+    // Format custom rules and coaching rules
+    let rulesSection = "";
+    const allRules = [];
+    
+    // Add enabled custom rules
+    if (customRules && customRules.length > 0) {
+      customRules.filter(rule => rule.enabled !== false).forEach(rule => {
+        allRules.push(`- ${rule.content}`);
+      });
+    }
+    
+    // Add coaching rules
+    if (coachingRules && coachingRules.length > 0) {
+      coachingRules.forEach(rule => {
+        if (rule.question && rule.answer) {
+          allRules.push(`- When asked "${rule.question}", the user answered: "${rule.answer}"`);
+        }
+      });
+    }
+    
+    if (allRules.length > 0) {
+      rulesSection = `
+IMPORTANT WRITING RULES (follow these strictly):
+${allRules.join('\n')}`;
     }
     
     const prompt = `
@@ -279,6 +330,7 @@ Your goal is to sound exactly like the samples provided, NOT like a typical prof
 ${voiceInstructions}
 ${humanInstructions}
 ${varietyInstructions}
+${rulesSection}
 ${contextInstructions}
 ${recipientInstructions}
 
@@ -286,7 +338,10 @@ Context for this email: "${topic}"
 
 ${feedbackSection}
 
-Write the email now. Match the exact style and brevity of the samples provided.
+CRITICAL WRITING RULES:
+1. Write the email now. Match the exact style and brevity of the samples provided.
+2. Do NOT use emojis unless they appear in the user's sample emails. Real people rarely use emojis in emails.
+3. Sound human through word choice and phrasing, not through artificial friendliness markers like emojis.
 
 Also, provide a concise, appropriate subject line for this email.
 

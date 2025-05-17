@@ -13,7 +13,7 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { Layout, Card, Button, Select, TextArea, AlertBanner, Badge, EmailDisplay } from "../components";
+import { Layout, Card, Button, Select, TextArea, AlertBanner, Badge, EmailDisplay, SkeletonEmail, SkeletonCard } from "../components";
 import { useRouter } from 'next/router';
 import ContextDetector from "../components/ContextDetector";
 import SimpleOnboarding from "../components/SimpleOnboarding";

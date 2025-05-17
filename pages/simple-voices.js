@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { db, auth } from "../lib/firebase";
 import { collection, query, where, onSnapshot, deleteDoc, doc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { Layout, Card, Button, Badge } from "../components";
+import { Layout, Card, Button, Badge, SkeletonCard } from "../components";
 import SimpleVoiceCreator from "../components/SimpleVoiceCreator";
 import HelpTooltip from "../components/HelpTooltip";
 import VoicesList from "../components/VoicesList";
@@ -66,7 +66,7 @@ export default function SimpleVoices() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Your Email Voices</h1>
+          <h1 className="text-3xl font-bold mb-2 text-surface-900 dark:text-white">Your Email Voices</h1>
           <p className="text-lg text-surface-600 dark:text-surface-400">
             Create different voices for different situations
           </p>
@@ -75,7 +75,7 @@ export default function SimpleVoices() {
         {/* Voice Creator Modal */}
         {showCreator && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-surface-900 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <div className="bg-white dark:bg-surface-900 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl">
               <SimpleVoiceCreator
                 onComplete={() => {
                   setShowCreator(false);
@@ -100,7 +100,7 @@ export default function SimpleVoices() {
         {/* Hero Section */}
         <div className="mb-8 flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-semibold flex items-center gap-2">
+            <h2 className="text-xl font-semibold flex items-center gap-2 text-surface-900 dark:text-white">
               Your Voices 
               {!loading && <span className="text-surface-600">({voices.length})</span>}
             </h2>
@@ -135,7 +135,7 @@ export default function SimpleVoices() {
             <Button
               size="lg"
               onClick={() => setShowCreator(true)}
-              className="hover:scale-105 transition-transform animate-pulse"
+              className="hover:scale-105 transition-transform"
             >
               Create Your First Voice
             </Button>
@@ -144,8 +144,8 @@ export default function SimpleVoices() {
 
         {/* Help Section */}
         {voices.length > 0 && (
-          <Card className="mt-8 p-6 bg-primary-50 dark:bg-primary-900/20 animate-fadeIn">
-            <h3 className="text-lg font-semibold mb-3">💡 Voice Training Tips</h3>
+          <Card className="mt-8 p-6 bg-surface-50 dark:bg-surface-800 border-surface-200 dark:border-surface-700">
+            <h3 className="text-lg font-semibold mb-3 text-surface-900 dark:text-white">💡 Voice Training Tips</h3>
             <ul className="space-y-2 text-sm text-surface-700 dark:text-surface-300">
               <li className="flex items-start">
                 <span className="mr-2">•</span>

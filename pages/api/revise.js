@@ -31,6 +31,21 @@ function generateHumanRevisionInstructions(personality, feedback) {
     }
   }
   
+  // Handle emoji-related feedback
+  if (feedbackLower.includes('emoji') || feedbackLower.includes('emojis')) {
+    instructions.push("Remove ALL emojis from the email - real people rarely use them in emails");
+    instructions.push("Focus on expressing warmth and personality through word choice, not emojis");
+  }
+  
+  // Handle artificial/AI-like feedback
+  if (feedbackLower.includes('artificial') || feedbackLower.includes('ai-like') || feedbackLower.includes('sounds ai')) {
+    instructions.push("Make the language more natural and conversational");
+    instructions.push("Remove any overly perfect grammar - humans make minor mistakes");
+    instructions.push("Vary sentence structure more naturally");
+    instructions.push("Remove emojis if present - they often make text seem artificial");
+    instructions.push("Use more natural transitions and phrases");
+  }
+  
   // Personality-based adjustments
   if (personality.warmth > 60) {
     instructions.push("Maintain warmth through word choice, not just added phrases");
@@ -78,6 +93,10 @@ export default async function handler(req, res) {
         voiceData = voiceDoc.data();
         voiceInstructions = voiceData.instructions || voiceInstructions;
         feedbackHistory = voiceData.feedbackMemory || [];
+        
+        // Get custom rules and coaching rules
+        const customRules = voiceData.customRules || [];
+        const coachingRules = voiceData.coachingRules || [];
       }
     }
     
@@ -138,6 +157,32 @@ ${formattedFeedback.join('\n')}
       }
     }
 
+    // Format custom rules and coaching rules
+    let rulesSection = "";
+    const allRules = [];
+    
+    // Add enabled custom rules
+    if (customRules && customRules.length > 0) {
+      customRules.filter(rule => rule.enabled !== false).forEach(rule => {
+        allRules.push(`- ${rule.content}`);
+      });
+    }
+    
+    // Add coaching rules
+    if (coachingRules && coachingRules.length > 0) {
+      coachingRules.forEach(rule => {
+        if (rule.question && rule.answer) {
+          allRules.push(`- When asked "${rule.question}", the user answered: "${rule.answer}"`);
+        }
+      });
+    }
+    
+    if (allRules.length > 0) {
+      rulesSection = `
+IMPORTANT PERSONAL WRITING RULES (follow these strictly):
+${allRules.join('\n')}`;
+    }
+    
     const prompt = `
 Revise this email to sound like a real person wrote it, not an AI. Apply the feedback while maintaining human authenticity.
 
@@ -149,10 +194,13 @@ CRITICAL HUMAN-LIKE WRITING RULES:
 5. Apply feedback subtly - don't make it obvious you're following instructions
 6. Keep any personal quirks or style from the original
 7. Make changes feel natural, not mechanical
+8. Do NOT add emojis unless they were in the original email. Real people rarely use emojis in emails.
+9. If the user complains about emojis or artificial tone, remove emojis and focus on natural language.
 
 ${voiceInstructions}
 ${humanInstructions}
 ${varietyInstructions}
+${rulesSection}
 ${writingPatterns}
 
 ORIGINAL EMAIL:
@@ -161,6 +209,8 @@ ORIGINAL EMAIL:
 FEEDBACK TO APPLY:
 """${feedback}"""
 ${feedbackSection}
+
+EMOJI RULE: Do not use emojis unless they appeared in the original email. Most people do not use emojis in professional or casual emails. If feedback mentions the email sounds artificial or AI-like, remove any emojis.
 
 Revise the email now, keeping it authentically human while incorporating the feedback.
 Sign as ${fullName}.

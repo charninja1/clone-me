@@ -1,0 +1,29 @@
+{
+  "name": "CloneMe for Emails",
+  "short_name": "CloneMe",
+  "description": "AI-powered email writing that sounds exactly like you",
+  "theme_color": "#4F46E5",
+  "background_color": "#FFFFFF",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "splash_pages": null,
+  "categories": ["productivity", "business"],
+  "lang": "en-US",
+  "prefer_related_applications": false
+}

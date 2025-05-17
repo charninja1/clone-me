@@ -8,6 +8,17 @@
   --secondary-gradient: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
   --success-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
   --error-gradient: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  --accent-gradient: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+  --teal-gradient: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+  --orange-gradient: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  --rainbow-gradient: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 33%, #ec4899 66%, #f97316 100%);
+  
+  /* Mesh Gradient */
+  --mesh-gradient: 
+    radial-gradient(at 40% 20%, rgb(99, 102, 241, 0.3) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgb(139, 92, 246, 0.3) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgb(236, 72, 153, 0.3) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgb(249, 115, 22, 0.3) 0px, transparent 50%);
   
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -15,9 +26,16 @@
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   
+  /* Colored Shadows */
+  --shadow-primary: 0 10px 15px -3px rgba(99, 102, 241, 0.4);
+  --shadow-secondary: 0 10px 15px -3px rgba(168, 85, 247, 0.4);
+  --shadow-accent: 0 10px 15px -3px rgba(236, 72, 153, 0.4);
+  
   /* Glow Effects */
   --glow-primary: 0 0 20px rgba(59, 130, 246, 0.5);
   --glow-secondary: 0 0 20px rgba(139, 92, 246, 0.5);
+  --glow-accent: 0 0 20px rgba(236, 72, 153, 0.5);
+  --glow-teal: 0 0 20px rgba(20, 184, 166, 0.5);
 }
 
 .dark {
@@ -34,17 +52,15 @@
   
   body {
     @apply bg-surface-50 dark:bg-surface-900 min-h-screen transition-colors duration-200;
-    background-image: 
-      radial-gradient(at 40% 20%, rgb(99, 102, 241, 0.1) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, rgb(139, 92, 246, 0.1) 0px, transparent 50%),
-      radial-gradient(at 0% 50%, rgb(59, 130, 246, 0.1) 0px, transparent 50%);
+    background-image: var(--mesh-gradient);
   }
   
   body.dark {
     background-image: 
       radial-gradient(at 40% 20%, rgb(99, 102, 241, 0.05) 0px, transparent 50%),
       radial-gradient(at 80% 0%, rgb(139, 92, 246, 0.05) 0px, transparent 50%),
-      radial-gradient(at 0% 50%, rgb(59, 130, 246, 0.05) 0px, transparent 50%);
+      radial-gradient(at 0% 50%, rgb(236, 72, 153, 0.05) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgb(249, 115, 22, 0.05) 0px, transparent 50%);
   }
 
   h1 {
@@ -60,7 +76,7 @@
   }
 
   a {
-    @apply text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors duration-200;
+    @apply text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-all duration-200 hover:underline;
   }
 
   /* Apply dark mode styles with class selector */
@@ -116,9 +132,45 @@
     background: var(--error-gradient);
   }
   
+  .gradient-accent {
+    background: var(--accent-gradient);
+  }
+  
+  .gradient-teal {
+    background: var(--teal-gradient);
+  }
+  
+  .gradient-orange {
+    background: var(--orange-gradient);
+  }
+  
+  .gradient-rainbow {
+    background: var(--rainbow-gradient);
+  }
+  
+  .gradient-mesh {
+    background: var(--mesh-gradient);
+  }
+  
   /* Gradient Text */
   .gradient-text {
     background: linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-fill-color: transparent;
+  }
+  
+  .gradient-text-rainbow {
+    background: var(--rainbow-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-fill-color: transparent;
+  }
+  
+  .gradient-text-accent {
+    background: var(--accent-gradient);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -139,6 +191,27 @@
   
   .glow-secondary {
     box-shadow: var(--glow-secondary);
+  }
+  
+  .glow-accent {
+    box-shadow: var(--glow-accent);
+  }
+  
+  .glow-teal {
+    box-shadow: var(--glow-teal);
+  }
+  
+  /* Colored Shadows */
+  .shadow-primary {
+    box-shadow: var(--shadow-primary);
+  }
+  
+  .shadow-secondary {
+    box-shadow: var(--shadow-secondary);
+  }
+  
+  .shadow-accent {
+    box-shadow: var(--shadow-accent);
   }
   
   /* Smooth Transitions */
@@ -178,6 +251,50 @@
   
   .animate-pulse-slow {
     animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .animate-fadeInUp {
+    animation: fadeInUp 0.5s ease-out;
+  }
+  
+  .animate-fadeInDown {
+    animation: fadeInDown 0.5s ease-out;
+  }
+  
+  .animate-rotateIn {
+    animation: rotateIn 0.4s ease-out;
+  }
+  
+  .animate-bounceIn {
+    animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+  
+  .animate-slideInLeft {
+    animation: slideInLeft 0.5s ease-out;
+  }
+  
+  .animate-slideInRight {
+    animation: slideInRight 0.5s ease-out;
+  }
+  
+  .animate-flipIn {
+    animation: flipIn 0.6s ease-out;
+  }
+  
+  .animate-scaleUp {
+    animation: scaleUp 0.4s ease-out;
+  }
+  
+  .animate-shake {
+    animation: shake 0.6s ease-in-out;
+  }
+  
+  .animate-wobble {
+    animation: wobble 0.8s ease-in-out;
+  }
+  
+  .animate-spin-slow {
+    animation: spin 2s linear infinite;
   }
   
   @keyframes fadeIn {
@@ -371,6 +488,55 @@
     transform: translateY(-4px);
   }
   
+  /* Interactive hover effects */
+  .hover-grow {
+    @apply transition-transform duration-200;
+  }
+  
+  .hover-grow:hover {
+    transform: scale(1.05);
+  }
+  
+  .hover-shrink {
+    @apply transition-transform duration-200;
+  }
+  
+  .hover-shrink:hover {
+    transform: scale(0.95);
+  }
+  
+  .hover-shadow {
+    @apply transition-shadow duration-300;
+  }
+  
+  .hover-shadow:hover {
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .hover-glow {
+    @apply transition-shadow duration-300;
+  }
+  
+  .hover-glow:hover {
+    box-shadow: var(--glow-primary);
+  }
+  
+  .hover-brightness {
+    @apply transition-all duration-200;
+  }
+  
+  .hover-brightness:hover {
+    filter: brightness(1.1);
+  }
+  
+  .hover-opacity {
+    @apply transition-opacity duration-200;
+  }
+  
+  .hover-opacity:hover {
+    opacity: 0.8;
+  }
+  
   /* Smooth Border Glow */
   .border-glow {
     position: relative;
@@ -406,6 +572,145 @@
     }
     100% {
       background-position: 0% 50%;
+    }
+  }
+  
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes fadeInDown {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes rotateIn {
+    from {
+      opacity: 0;
+      transform: rotate(-90deg) scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: rotate(0) scale(1);
+    }
+  }
+  
+  @keyframes bounceIn {
+    0% {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.05);
+    }
+    70% {
+      transform: scale(0.9);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  
+  @keyframes slideInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-50px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(50px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  @keyframes flipIn {
+    from {
+      opacity: 0;
+      transform: perspective(600px) rotateY(90deg);
+    }
+    to {
+      opacity: 1;
+      transform: perspective(600px) rotateY(0);
+    }
+  }
+  
+  @keyframes scaleUp {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  @keyframes shake {
+    0%, 100% {
+      transform: translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+      transform: translateX(-4px);
+    }
+    20%, 40%, 60%, 80% {
+      transform: translateX(4px);
+    }
+  }
+  
+  @keyframes wobble {
+    0% {
+      transform: rotate(0deg);
+    }
+    15% {
+      transform: rotate(-5deg);
+    }
+    30% {
+      transform: rotate(3deg);
+    }
+    45% {
+      transform: rotate(-3deg);
+    }
+    60% {
+      transform: rotate(2deg);
+    }
+    75% {
+      transform: rotate(-1deg);
+    }
+    100% {
+      transform: rotate(0deg);
+    }
+  }
+  
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
     }
   }
 }

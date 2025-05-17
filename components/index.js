@@ -22,3 +22,8 @@ export { default as SavedEmailsList } from './SavedEmailsList';
 
 // Voice Components
 export { default as VoicesList } from './VoicesList';
+
+// Error Boundaries
+export { default as ErrorBoundary } from './ErrorBoundary';
+export { default as PageErrorBoundary } from './PageErrorBoundary';
+export { default as ComponentErrorBoundary } from './ComponentErrorBoundary';

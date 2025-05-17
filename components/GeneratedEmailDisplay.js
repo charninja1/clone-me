@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Button, Input, TextArea, Badge } from '../components';
+import { Card, Button, Input, TextArea, Badge, SkeletonEmail } from '../components';
 
 export default function GeneratedEmailDisplay({
   response,
@@ -32,6 +32,17 @@ export default function GeneratedEmailDisplay({
     setCopySuccess(true);
     setTimeout(() => setCopySuccess(false), 2000);
   };
+
+  if (isGenerating) {
+    return (
+      <div className="mt-8 border-t border-surface-200 dark:border-surface-700 pt-6">
+        <h3 className="text-lg font-medium text-surface-900 dark:text-surface-200 mb-3">
+          Generating Email...
+        </h3>
+        <SkeletonEmail />
+      </div>
+    );
+  }
 
   if (!response) return null;
 
@@ -128,6 +139,24 @@ export default function GeneratedEmailDisplay({
                 className="hover:scale-105 transition-transform"
               >
                 Add details 📝
+              </Button>
+              <Button
+                onClick={() => onQuickRevision('remove emojis')}
+                variant="outline"
+                size="sm"
+                disabled={isGenerating}
+                className="hover:scale-105 transition-transform"
+              >
+                Too many emojis 🚫
+              </Button>
+              <Button
+                onClick={() => onQuickRevision('sounds artificial')}
+                variant="outline"
+                size="sm"
+                disabled={isGenerating}
+                className="hover:scale-105 transition-transform"
+              >
+                Sounds AI-like 🤖
               </Button>
             </div>
           </div>

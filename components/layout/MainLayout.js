@@ -4,6 +4,7 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import Link from "next/link";
 import Button from "../ui/Button";
 import ThemeSelector from "../ui/ThemeSelector";
+// import PWAPrompt from "../PWAPrompt";
 
 export default function MainLayout({ children }) {
   const [user, setUser] = useState(null);
@@ -16,6 +17,7 @@ export default function MainLayout({ children }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-surface-50 dark:bg-surface-900 transition-colors duration-200">
+      {/* <PWAPrompt /> */}
       <header className="bg-white dark:bg-surface-800 border-b border-surface-200 dark:border-surface-700 shadow-sm transition-colors duration-200">
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" aria-label="Main navigation">
           <div className="flex justify-between h-16">

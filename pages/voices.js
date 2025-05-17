@@ -11,10 +11,13 @@ import {
   deleteDoc
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { Layout, Card, Button, Input, TextArea, AlertBanner, Badge } from "../components";
+import { Layout, Card, Button, Input, TextArea, AlertBanner, Badge, SkeletonCard } from "../components";
 import VoiceOnboardingWizard from "../components/VoiceOnboardingWizard";
 import VoiceCalibration from "../components/VoiceCalibration";
 import FeedbackMemoryVisualization from "../components/FeedbackMemoryVisualization";
+import VoiceCoachingChat from "../components/VoiceCoachingChat";
+import VoiceRules from "../components/VoiceRules";
+import ComponentErrorBoundary from "../components/ComponentErrorBoundary";
 
 // Voice template definitions
 const voiceTemplates = [
@@ -80,7 +83,10 @@ export default function VoicesPage() {
   const [viewMode, setViewMode] = useState('cards'); // cards, onboarding, calibration
   const [userId, setUserId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingVoices, setIsLoadingVoices] = useState(true);
   const [error, setError] = useState("");
+  const [coachingVoiceId, setCoachingVoiceId] = useState(null);
+  const [viewRulesVoiceId, setViewRulesVoiceId] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -105,6 +111,7 @@ export default function VoicesPage() {
   }
 
   async function fetchVoices() {
+    setIsLoadingVoices(true);
     try {
       const snapshot = await getDocs(
         query(collection(db, "voices"), where("userId", "==", userId))
@@ -113,6 +120,8 @@ export default function VoicesPage() {
       setVoices(list);
     } catch (err) {
       setError("Failed to load voices: " + err.message);
+    } finally {
+      setIsLoadingVoices(false);
     }
   }
 
@@ -329,13 +338,13 @@ export default function VoicesPage() {
               
               <TextArea
                 id="voice-instructions"
-                label="Instructions"
+                label="General Instructions"
                 placeholder="e.g. Write in a professional voice with clear and concise language..."
                 value={newInstructions}
                 onChange={(e) => setNewInstructions(e.target.value)}
                 rows={4}
                 required
-                helpText="These instructions will be sent to the AI to guide the writing style. Be specific about language, structure, and voice."
+                helpText="Set the overall personality and tone for this voice. For specific do's and don'ts (like 'never use emojis'), add Rules after creating."
               />
               
               <TextArea
@@ -365,7 +374,13 @@ export default function VoicesPage() {
         <div>
           <h2 className="text-xl font-semibold text-surface-800 mb-4">Your Voices</h2>
           
-          {voices.length === 0 ? (
+          {isLoadingVoices ? (
+            <div className="grid gap-6 md:grid-cols-2">
+              {[...Array(4)].map((_, index) => (
+                <SkeletonCard key={index} lines={4} />
+              ))}
+            </div>
+          ) : voices.length === 0 ? (
             <Card className="text-center p-8">
               <p className="text-surface-600">No voices yet. Create your first one above.</p>
             </Card>
@@ -374,7 +389,7 @@ export default function VoicesPage() {
               {voices.map((voice) => (
                 <Card
                   key={voice.id}
-                  className="overflow-hidden p-0"
+                  className="overflow-hidden p-0 hover-shadow transition-all duration-300"
                 >
                   {editingVoiceId === voice.id ? (
                     <div className="p-6">
@@ -396,12 +411,12 @@ export default function VoicesPage() {
                         />
                         
                         <TextArea
-                          label="Instructions"
+                          label="General Instructions"
                           value={editedInstructions}
                           onChange={(e) => setEditedInstructions(e.target.value)}
                           rows={4}
                           required
-                          helpText="These instructions will be sent to the AI to guide the writing style."
+                          helpText="Broad guidance for this voice's personality and tone (e.g., 'Be professional but friendly'). For specific rules, use the Rules feature."
                         />
                         
                         <TextArea
@@ -482,6 +497,22 @@ export default function VoicesPage() {
                           Calibrate
                         </Button>
                         <Button
+                          onClick={() => setCoachingVoiceId(voice.id)}
+                          variant="outline"
+                          size="xs"
+                          icon={<span>💬</span>}
+                        >
+                          Coach
+                        </Button>
+                        <Button
+                          onClick={() => setViewRulesVoiceId(viewRulesVoiceId === voice.id ? null : voice.id)}
+                          variant="outline"
+                          size="xs"
+                          icon={<span>📜</span>}
+                        >
+                          {viewRulesVoiceId === voice.id ? 'Hide Rules' : 'Rules'}
+                        </Button>
+                        <Button
                           onClick={() => setViewFeedbackVoiceId(viewFeedbackVoiceId === voice.id ? null : voice.id)}
                           variant="outline"
                           size="xs"
@@ -498,6 +529,20 @@ export default function VoicesPage() {
                           Delete
                         </Button>
                       </div>
+                      
+                      {viewRulesVoiceId === voice.id && (
+                        <div className="mt-4">
+                          <VoiceRules 
+                            voice={voice}
+                            onUpdate={(updatedVoice) => {
+                              const updatedVoices = voices.map(v => 
+                                v.id === updatedVoice.id ? updatedVoice : v
+                              );
+                              setVoices(updatedVoices);
+                            }}
+                          />
+                        </div>
+                      )}
                       
                       {viewFeedbackVoiceId === voice.id && (
                         <div className="mt-4">
@@ -548,6 +593,29 @@ export default function VoicesPage() {
           )}
         </div>
       </div>
+      
+      {/* Coaching Chat Modal */}
+      {coachingVoiceId && (
+        <VoiceCoachingChat
+          voice={voices.find(v => v.id === coachingVoiceId)}
+          onClose={() => setCoachingVoiceId(null)}
+        />
+      )}
+      
+      {/* Calibration Modal */}
+      {calibratingVoiceId && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <Card className="max-w-2xl w-full p-6">
+            <VoiceCalibration 
+              voice={voices.find(v => v.id === calibratingVoiceId)}
+              onComplete={() => {
+                setCalibratingVoiceId(null);
+                fetchVoices();
+              }}
+            />
+          </Card>
+        </div>
+      )}
     </Layout>
   );
 }

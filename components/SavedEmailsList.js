@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Button, Select, TextArea, Badge, EmailDisplay } from '../components';
+import { Card, Button, Select, TextArea, Badge, EmailDisplay, SkeletonEmail } from '../components';
 import LoadingSkeleton from './ui/LoadingSkeleton';
 
 export default function SavedEmailsList({

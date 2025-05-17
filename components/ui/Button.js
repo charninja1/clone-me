@@ -35,6 +35,24 @@ export default function Button({
       border border-transparent shadow-md
       hover:brightness-110
     `,
+    accent: `
+      gradient-accent text-white  
+      hover:shadow-lg focus:ring-accent-500
+      border border-transparent shadow-md
+      hover:brightness-110
+    `,
+    teal: `
+      gradient-teal text-white  
+      hover:shadow-lg focus:ring-teal-500
+      border border-transparent shadow-md
+      hover:brightness-110
+    `,
+    orange: `
+      gradient-orange text-white  
+      hover:shadow-lg focus:ring-orange-500
+      border border-transparent shadow-md
+      hover:brightness-110
+    `,
     outline: `
       bg-white text-surface-700 
       hover:bg-surface-50 dark:bg-surface-800 

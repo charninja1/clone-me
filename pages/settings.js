@@ -18,8 +18,11 @@ import {
 import { Layout, Card, Button, Select, Checkbox, AlertBanner, Input } from "../components";
 import ThemeSelector from "../components/ui/ThemeSelector";
 import { useTheme, THEMES } from "../contexts/ThemeContext";
+import { useAutoSave } from "../hooks/useAutoSave";
+import { useSaving } from "../contexts/SavingContext";
 
 export default function SettingsPage() {
+  const { startSaving, savingSuccess, savingError } = useSaving('settings');
   const [userId, setUserId] = useState(null);
   const [userEmail, setUserEmail] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -32,6 +35,7 @@ export default function SettingsPage() {
   const [autoGmail, setAutoGmail] = useState(false);
   const [status, setStatus] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
   
   // Password change states
   const [currentPassword, setCurrentPassword] = useState("");
@@ -65,6 +69,7 @@ export default function SettingsPage() {
       setAutoCopy(data.settings?.autoCopy || false);
       setAutoGmail(data.settings?.autoGmail || false);
     }
+    setHasLoadedInitialData(true);
   }
 
   async function loadVoices(uid) {
@@ -74,24 +79,57 @@ export default function SettingsPage() {
     setVoices(list);
   }
 
-  async function handleSave() {
+  async function handleSave(settingsData) {
+    const dataToSave = settingsData || {
+      firstName,
+      lastName,
+      defaultVoiceId,
+      settings: {
+        darkMode,
+        autoSave,
+        autoCopy,
+        autoGmail
+      },
+    };
+    
     if (!userId) return;
     
-    setIsLoading(true);
     try {
       const userRef = doc(db, "users", userId);
-      await updateDoc(userRef, {
-        firstName,
-        lastName,
-        defaultVoiceId,
-        settings: {
-          darkMode,
-          autoSave,
-          autoCopy,
-          autoGmail
-        },
-      });
+      await updateDoc(userRef, dataToSave);
+      return true;
+    } catch (error) {
+      console.error('Save error:', error);
+      throw error;
+    }
+  }
 
+  // Create settings data object for auto-save
+  const settingsData = {
+    firstName,
+    lastName,
+    defaultVoiceId,
+    settings: {
+      darkMode,
+      autoSave,
+      autoCopy,
+      autoGmail
+    },
+  };
+
+  // Use auto-save hook
+  const { isDirty, lastSaved, saveNow, SavingIndicator } = useAutoSave({
+    data: settingsData,
+    onSave: handleSave,
+    enabled: hasLoadedInitialData && userId,
+    delay: 1500,
+  });
+
+  // Manual save function
+  async function handleManualSave() {
+    setIsLoading(true);
+    try {
+      await saveNow();
       setStatus("✅ Settings saved!");
       setTimeout(() => setStatus(""), 3000);
     } catch (error) {
@@ -168,7 +206,7 @@ export default function SettingsPage() {
       <div className="max-w-3xl mx-auto">
         <Card className="mb-8">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-primary-700 dark:text-primary-300 mb-0">Account Settings</h1>
+            <h1 className="text-2xl font-bold mb-0">Account Settings</h1>
             <div className="text-sm bg-surface-100 dark:bg-surface-700 px-3 py-1 rounded-md">
               <span className="font-medium">Email:</span> {userEmail}
             </div>
@@ -176,8 +214,8 @@ export default function SettingsPage() {
 
           <div className="space-y-8">
             {/* Personal Information */}
-            <Card className="mb-8">
-              <h3 className="text-lg font-medium text-surface-900 dark:text-surface-100 mb-4">Personal Information</h3>
+            <Card className="mb-8 bg-surface-50 dark:bg-surface-800">
+              <h3 className="text-lg font-medium mb-4 text-transparent bg-clip-text bg-gradient-to-r from-surface-900 to-surface-700 dark:from-white dark:to-surface-300">Personal Information</h3>
               <p className="text-surface-600 dark:text-surface-400 mb-4">
                 Your name will be used to personalize the generated emails.
               </p>
@@ -202,8 +240,8 @@ export default function SettingsPage() {
             </Card>
 
             {/* Default Voice */}
-            <Card className="mb-8">
-              <h3 className="text-lg font-medium text-surface-900 dark:text-surface-100 mb-4">Default Voice</h3>
+            <Card className="mb-8 bg-surface-50 dark:bg-surface-800">
+              <h3 className="text-lg font-medium mb-4 text-transparent bg-clip-text bg-gradient-to-r from-surface-900 to-surface-700 dark:from-white dark:to-surface-300">Default Voice</h3>
               <p className="text-surface-600 dark:text-surface-400 mb-4">
                 Select a default voice that will be automatically selected when generating new emails.
               </p>
@@ -220,8 +258,8 @@ export default function SettingsPage() {
             </Card>
             
             {/* Change Password */}
-            <Card className="mb-8">
-              <h3 className="text-lg font-medium text-surface-900 dark:text-surface-100 mb-4">Change Password</h3>
+            <Card className="mb-8 bg-surface-50 dark:bg-surface-800">
+              <h3 className="text-lg font-medium mb-4 text-transparent bg-clip-text bg-gradient-to-r from-surface-900 to-surface-700 dark:from-white dark:to-surface-300">Change Password</h3>
               <p className="text-surface-600 dark:text-surface-400 mb-4">
                 Update your account password. You'll need to enter your current password for verification.
               </p>
@@ -280,8 +318,8 @@ export default function SettingsPage() {
             </Card>
 
             {/* Preferences */}
-            <Card>
-              <h3 className="text-lg font-medium text-surface-900 dark:text-surface-100 mb-4">Preferences</h3>
+            <Card className="bg-surface-50 dark:bg-surface-800">
+              <h3 className="text-lg font-medium mb-4 text-transparent bg-clip-text bg-gradient-to-r from-surface-900 to-surface-700 dark:from-white dark:to-surface-300">Preferences</h3>
               
               <div className="space-y-4">
                 <div>
@@ -322,13 +360,21 @@ export default function SettingsPage() {
           </div>
 
           <div className="mt-8 flex items-center justify-between">
-            <Button 
-              onClick={handleSave} 
-              disabled={isLoading}
-              isLoading={isLoading}
-            >
-              Save Settings
-            </Button>
+            <div className="flex items-center gap-4">
+              <Button 
+                onClick={handleManualSave} 
+                disabled={isLoading || !isDirty}
+                isLoading={isLoading}
+              >
+                Save Settings
+              </Button>
+              {isDirty && (
+                <span className="text-sm text-surface-600 dark:text-surface-400">
+                  Unsaved changes
+                </span>
+              )}
+              <SavingIndicator position="bottom-left" />
+            </div>
             
             {status && (
               <AlertBanner

@@ -30,12 +30,12 @@ export default function VoicesList({
 
   if (voices.length === 0) {
     return (
-      <Card className="text-center p-12 animate-fadeIn">
+      <Card className="text-center p-12">
         <div className="space-y-4">
           <div className="w-16 h-16 bg-primary-100 dark:bg-primary-900/30 rounded-full mx-auto flex items-center justify-center">
             <span className="text-3xl">🎤</span>
           </div>
-          <h3 className="text-xl font-semibold">Create Your First Voice</h3>
+          <h3 className="text-xl font-semibold text-surface-900 dark:text-white">Create Your First Voice</h3>
           <p className="text-surface-600 dark:text-surface-400 max-w-md mx-auto">
             Start by creating a voice that captures your unique writing style.
           </p>

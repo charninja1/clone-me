@@ -97,7 +97,7 @@ const SimpleVoiceCreator = ({ onComplete }) => {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold mb-2">Create Your First Voice</h2>
+        <h2 className="text-2xl font-bold mb-2 text-surface-900 dark:text-white">Create Your First Voice</h2>
         <p className="text-surface-600 dark:text-surface-400">Choose a template or create your own</p>
       </div>
       
